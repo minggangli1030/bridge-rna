@@ -46,8 +46,11 @@ class PreprocessingConfig:
     remove_single_cell: bool = True
 
     # --- Normalization ---
-    normalization: str = "log1p_tpm"         # "log1p_tpm", "tpm", "raw_counts"
+    normalization: str = "tpm"               # "log1p_tpm", "tpm", "raw_counts"
     extraction_batch_size: int = 10_000
+
+    # --- Subsetting ---
+    max_samples_per_species: Optional[int] = None  # None = all data
 
     # --- Paths ---
     archs4_dir: str = "data/archs4"
@@ -189,20 +192,134 @@ class ExpressionLoader:
 
         return h, gene_symbols, geo_accessions, sc_prob, gene_mask, gene_lengths
 
+    def _normalize_df(
+        self,
+        chunk_df: pd.DataFrame,
+        gene_lengths: pd.Series,
+        canonical_genes: list[str],
+        gene_name_map: Optional[dict] = None,
+    ) -> pd.DataFrame:
+        """
+        Shared normalization: groupby → QC → TPM → remap → reindex.
+        Normalization uses original gene names so gene_lengths match,
+        then remaps (e.g. mouse→human) afterward.
+        Returns aligned DataFrame or empty DataFrame if nothing passes QC.
+        """
+        cfg = self.config
+
+        # Aggregate duplicate gene rows
+        chunk_df = chunk_df.groupby(level=0).sum()
+
+        # QC: min non-zero genes (before remap — gene count is the same)
+        nonzero = (chunk_df > 0).sum(axis=0)
+        chunk_df = chunk_df[nonzero[nonzero >= cfg.qc_min_nonzero].index]
+
+        if chunk_df.shape[1] == 0:
+            return chunk_df
+
+        # Normalize (using original species gene names that match gene_lengths)
+        if cfg.normalization in ("log1p_tpm", "tpm"):
+            lengths_kb = gene_lengths.reindex(chunk_df.index).fillna(1000) / 1000.0
+            rate = chunk_df.div(lengths_kb, axis=0)
+            tpm = rate.div(rate.sum(axis=0), axis=1) * 1e6
+            chunk_df = np.log1p(tpm) if cfg.normalization == "log1p_tpm" else tpm
+
+        # Remap gene names (e.g. mouse → human symbols) AFTER normalization
+        if gene_name_map is not None:
+            new_idx = [gene_name_map.get(g, g) for g in chunk_df.index]
+            chunk_df.index = new_idx
+            chunk_df = chunk_df.groupby(level=0).sum()
+
+        # Align to canonical gene list
+        chunk_df = chunk_df.reindex(canonical_genes, fill_value=0).astype("float32")
+        return chunk_df
+
+    def _extract_subset(
+        self,
+        h5_path: str,
+        species: str,
+        canonical_genes: list[str],
+        tmp_dir: str,
+        gene_name_map: Optional[dict] = None,
+    ) -> tuple[list[Path], pd.DataFrame]:
+        """
+        Fast subset extraction using archs4py.
+        Returns (batch_paths, metadata_df).
+        """
+        import archs4py as a4
+
+        cfg = self.config
+        n_samples = cfg.max_samples_per_species
+        t0 = time.time()
+
+        gene_lengths = (
+            self.exon_lengths_human if species == "human"
+            else self.exon_lengths_mouse
+        )
+
+        print(f"    SUBSET MODE via archs4py: {n_samples:,} random samples (seed={cfg.seed})")
+        print(f"    Reading from {h5_path}...", flush=True)
+        raw_df = a4.data.rand(h5_path, n_samples, seed=cfg.seed, remove_sc=True)
+        print(f"    Got {raw_df.shape[1]:,} bulk samples × {raw_df.shape[0]:,} genes "
+              f"in {time.time() - t0:.0f}s")
+
+        # Filter to genes with exon lengths
+        valid_genes = set(gene_lengths.index)
+        keep = [g for g in raw_df.index if g in valid_genes]
+        raw_df = raw_df.loc[keep]
+        print(f"    Filtered to {len(keep):,} genes with exon lengths")
+
+        # Normalize
+        chunk_df = self._normalize_df(raw_df, gene_lengths, canonical_genes, gene_name_map)
+        del raw_df
+
+        if chunk_df.shape[1] == 0:
+            print(f"    0 samples passed QC")
+            return [], pd.DataFrame(columns=["geo_accession", "species"])
+
+        print(f"    {chunk_df.shape[1]:,} samples passed QC")
+
+        # Write single batch parquet
+        tmp = Path(tmp_dir)
+        tmp.mkdir(parents=True, exist_ok=True)
+        batch_path = tmp / f"{species}_batch_0001.parquet"
+        chunk_df.to_parquet(batch_path, compression="zstd")
+
+        metadata = pd.DataFrame({
+            "geo_accession": chunk_df.columns.tolist(),
+            "species": species,
+        })
+        print(f"    Species done in {time.time() - t0:.0f}s — "
+              f"{chunk_df.shape[1]:,} samples")
+        return [batch_path], metadata
+
     def extract_and_normalize(
         self,
         h5_path: str,
         species: str,
         canonical_genes: list[str],
         tmp_dir: str,
+        gene_name_map: Optional[dict] = None,
     ) -> tuple[list[Path], pd.DataFrame]:
         """
-        Sequentially read all bulk samples from ARCHS4 H5, normalize, align.
+        Read all bulk samples from ARCHS4 H5, normalize, align.
         Writes each batch to a temporary parquet file to avoid OOM.
+
+        For subset mode, delegates to _extract_subset (archs4py).
+
+        Args:
+            gene_name_map: Optional dict mapping H5 gene symbols to canonical names
+                           (e.g. mouse→human for ortholog alignment).
 
         Returns:
             (batch_paths, metadata_df)
         """
+        # Fast path for subset mode
+        if self.config.max_samples_per_species is not None:
+            return self._extract_subset(
+                h5_path, species, canonical_genes, tmp_dir, gene_name_map
+            )
+
         h, gene_symbols, geo_accessions, sc_prob, gene_mask, gene_lengths = \
             self._load_h5_meta(h5_path, species)
 
@@ -224,24 +341,28 @@ class ExpressionLoader:
         tmp = Path(tmp_dir)
         tmp.mkdir(parents=True, exist_ok=True)
 
-        for start in range(0, n_total, batch_size):
-            end = min(start + batch_size, n_total)
-            batch_num = start // batch_size + 1
+        for batch_num in range(1, n_batches + 1):
+            b_start = (batch_num - 1) * batch_size
+            b_end = min(batch_num * batch_size, n_total)
 
-            print(f"    Batch {batch_num}/{n_batches}: reading {end - start:,} samples from H5...",
+            print(f"    Batch {batch_num}/{n_batches}: reading {b_end - b_start:,} samples from H5...",
                   end=" ", flush=True)
-            raw = expr_ds[:, start:end]  # (n_genes, chunk_size)
+            try:
+                raw = expr_ds[:, b_start:b_end]  # (n_genes, chunk_size)
+            except OSError as e:
+                print(f"SKIPPED (H5 read error: {e})")
+                continue
 
             # Filter to genes with exon lengths (in memory)
             raw = raw[gene_mask]
 
             # Filter single-cell samples
             if sc_prob is not None:
-                bulk_mask = sc_prob[start:end] < self.SC_THRESHOLD
+                bulk_mask = sc_prob[b_start:b_end] < self.SC_THRESHOLD
                 raw = raw[:, bulk_mask]
-                chunk_accessions = geo_accessions[start:end][bulk_mask]
+                chunk_accessions = geo_accessions[b_start:b_end][bulk_mask]
             else:
-                chunk_accessions = geo_accessions[start:end]
+                chunk_accessions = geo_accessions[b_start:b_end]
 
             if raw.shape[1] == 0:
                 print("skipped (all SC)")
@@ -250,27 +371,11 @@ class ExpressionLoader:
             total_bulk += raw.shape[1]
 
             chunk_df = pd.DataFrame(raw, index=gene_names, columns=chunk_accessions)
-
-            # Aggregate duplicate gene rows
-            chunk_df = chunk_df.groupby(level=0).sum()
-
-            # QC: min non-zero genes
-            nonzero = (chunk_df > 0).sum(axis=0)
-            chunk_df = chunk_df[nonzero[nonzero >= cfg.qc_min_nonzero].index]
+            chunk_df = self._normalize_df(chunk_df, gene_lengths, canonical_genes, gene_name_map)
 
             if chunk_df.shape[1] == 0:
                 print(f"{raw.shape[1]} bulk, 0 passed QC")
                 continue
-
-            # Normalize
-            if cfg.normalization in ("log1p_tpm", "tpm"):
-                lengths_kb = gene_lengths.loc[chunk_df.index].fillna(1000) / 1000.0
-                rate = chunk_df.div(lengths_kb, axis=0)
-                tpm = rate.div(rate.sum(axis=0), axis=1) * 1e6
-                chunk_df = np.log1p(tpm) if cfg.normalization == "log1p_tpm" else tpm
-
-            # Align to canonical gene list
-            chunk_df = chunk_df.reindex(canonical_genes, fill_value=0).astype("float32")
 
             # Write to disk instead of keeping in RAM
             batch_path = tmp / f"{species}_batch_{batch_num:04d}.parquet"
@@ -280,7 +385,7 @@ class ExpressionLoader:
             total += chunk_df.shape[1]
 
             elapsed = time.time() - t_species
-            frac = end / n_total
+            frac = b_end / n_total
             eta = (elapsed / frac - elapsed) if frac > 0 else 0
             print(f"+{chunk_df.shape[1]:,} QC pass ({total:,} kept / "
                   f"{total_bulk:,} bulk) "
@@ -334,7 +439,7 @@ class RNADatasetBuilder:
 
         # Populated by process()
         self.canonical_genes: list[str] = []
-        self.expr: Optional[pd.DataFrame] = None   # genes × samples
+        self.batch_paths: list[Path] = []           # temp parquet files
         self.meta: Optional[pd.DataFrame] = None
         self.zero_genes: dict[str, set] = {}        # species → set of zero-expression genes
 
@@ -348,81 +453,111 @@ class RNADatasetBuilder:
         return os.path.join(self.config.archs4_dir, fname)
 
     def process(self):
-        """Run the full pipeline: determine gene set → extract → normalize."""
+        """Run the full pipeline: extract → normalize → find zero genes."""
+        import shutil
         t0 = time.time()
         cfg = self.config
         species_list = self._species_list()
 
-        # --- Determine canonical gene list ---
+        # --- Settings ---
         print("=" * 70)
-        print(f"Gene set: {cfg.gene_set} | Species: {cfg.species}")
+        print(f"PREPROCESSING SETTINGS")
+        print(f"{'='*70}")
+        print(f"  Species:           {cfg.species}")
+        print(f"  Gene set:          {cfg.gene_set}")
+        print(f"  Normalization:     {cfg.normalization}")
+        print(f"  QC min nonzero:    {cfg.qc_min_nonzero:,}")
+        print(f"  Remove SC:         {cfg.remove_single_cell}")
+        print(f"  Batch size:        {cfg.extraction_batch_size:,}")
+        print(f"  Output dir:        {cfg.output_dir}")
+        if cfg.max_samples_per_species:
+            print(f"  Max samples/sp:    {cfg.max_samples_per_species:,}")
+        else:
+            print(f"  Max samples/sp:    all")
+        print(f"  Seed:              {cfg.seed}")
         print("=" * 70)
 
         # Start with all protein-coding orthologs
         all_ortho = self.registry.all_human_ortho
         print(f"\nProtein-coding orthologs: {len(all_ortho):,}")
 
-        # --- Extract all samples using full gene list ---
+        # --- Extract all samples using full gene list (stream to disk) ---
+        tmp_dir = os.path.join(cfg.output_dir, "_tmp_batches")
         print(f"\n{'='*70}")
-        print(f"Extracting all bulk samples")
+        print(f"Extracting all bulk samples (streaming to {tmp_dir})")
         print(f"{'='*70}")
 
-        all_exprs = []
+        all_batch_paths = []
         all_metas = []
+        species_batch_paths: dict[str, list[Path]] = {}
 
         for species in species_list:
             print(f"\n  [{species.upper()}]")
-            expr, meta = self.loader.extract_and_normalize(
+            # Mouse H5 uses mouse gene symbols; remap to human via orthologs
+            name_map = self.registry.mouse_to_human if species == "mouse" else None
+            batch_paths, meta = self.loader.extract_and_normalize(
                 self._h5_path(species),
                 species,
                 all_ortho,
+                tmp_dir,
+                gene_name_map=name_map,
             )
-            if not expr.empty:
-                all_exprs.append(expr)
+            all_batch_paths.extend(batch_paths)
+            species_batch_paths[species] = batch_paths
+            if not meta.empty:
                 all_metas.append(meta)
 
-        if not all_exprs:
+        if not all_batch_paths:
             print("No samples extracted.")
             return
 
-        self.expr = pd.concat(all_exprs, axis=1)
+        self.batch_paths = all_batch_paths
         self.meta = pd.concat(all_metas, ignore_index=True)
-        print(f"\nTotal after extraction: {self.expr.shape[1]:,} samples × "
-              f"{self.expr.shape[0]:,} genes")
+        total_samples = len(self.meta)
+        print(f"\nTotal after extraction: {total_samples:,} samples × "
+              f"{len(all_ortho):,} genes in {len(all_batch_paths)} batch files")
 
         # --- Remove zero-expression genes from actual data ---
         if cfg.gene_set == "shared_orthologs":
-            print(f"\nFinding zero-expression genes across all samples...")
+            print(f"\nFinding zero-expression genes (scanning batch files)...")
             for species in species_list:
-                sp_cols = self.meta.loc[self.meta["species"] == species, "geo_accession"]
-                sp_expr = self.expr[sp_cols]
-                zero = set(sp_expr.index[sp_expr.sum(axis=1) == 0])
-                self.zero_genes[species] = zero
-                print(f"  {species}: {len(zero):,} genes with zero expression")
+                # Accumulate per-gene sums across all batches for this species
+                gene_sum = None
+                for bp in species_batch_paths[species]:
+                    batch_df = pd.read_parquet(bp)
+                    batch_sum = batch_df.sum(axis=1)
+                    if gene_sum is None:
+                        gene_sum = batch_sum
+                    else:
+                        gene_sum = gene_sum.add(batch_sum, fill_value=0)
+                    del batch_df
+                    gc.collect()
+                if gene_sum is not None:
+                    zero = set(gene_sum.index[gene_sum == 0])
+                    self.zero_genes[species] = zero
+                    print(f"  {species}: {len(zero):,} genes with zero expression")
 
             all_zero = set()
             for zg in self.zero_genes.values():
                 all_zero |= zg
-            keep = [g for g in self.expr.index if g not in all_zero]
-            self.expr = self.expr.loc[keep]
-            print(f"  Removed {len(all_zero):,} genes → {len(keep):,} remaining")
+            self.canonical_genes = [g for g in all_ortho if g not in all_zero]
+            print(f"  Removed {len(all_zero):,} genes → {len(self.canonical_genes):,} remaining")
+        else:
+            self.canonical_genes = list(all_ortho)
 
-        self.canonical_genes = list(self.expr.index)
-        print(f"\nFinal: {self.expr.shape[1]:,} samples × "
-              f"{self.expr.shape[0]:,} genes")
+        print(f"\nFinal: {total_samples:,} samples × "
+              f"{len(self.canonical_genes):,} genes")
 
         elapsed = time.time() - t0
 
         # --- Summary ---
-        total_samples = self.expr.shape[1] if self.expr is not None else 0
-        total_genes = len(self.canonical_genes)
         print(f"\n{'='*70}")
         print(f"SUMMARY")
         print(f"{'='*70}")
         print(f"  Species:         {cfg.species}")
         print(f"  Gene set:        {cfg.gene_set}")
         print(f"  Protein-coding:  yes ({len(self.registry.protein_coding):,} whitelist)")
-        print(f"  Canonical genes: {total_genes:,}")
+        print(f"  Canonical genes: {len(self.canonical_genes):,}")
         print(f"  Total samples:   {total_samples:,}")
         for sp in species_list:
             sp_count = (self.meta["species"] == sp).sum() if self.meta is not None else 0
@@ -432,20 +567,20 @@ class RNADatasetBuilder:
             print(f"  Zero-expression genes removed:")
             for sp, zg in self.zero_genes.items():
                 print(f"    {sp:>8s}:      {len(zg):,}")
+        print(f"  Batch files:     {len(self.batch_paths)} in {tmp_dir}")
         print(f"  Time elapsed:    {elapsed / 60:.1f} min")
         print(f"{'='*70}")
 
     def save_parquet(self, output_dir: Optional[str] = None):
         """
-        Save processed data as a single parquet file + metadata.
+        Merge batch parquets into final output, filtering to canonical genes.
 
         Output:
             {output_dir}/expression.parquet   (genes × samples, float32, zstd)
             {output_dir}/metadata.csv          (geo_accession, species)
             {output_dir}/canonical_genes.csv   (token_id, gene_symbol)
-
-        Splitting into train/val/test is done later with scikit-learn.
         """
+        import shutil
         out = Path(output_dir or self.config.output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
@@ -466,26 +601,58 @@ class RNADatasetBuilder:
         print(f"Saved canonical_genes.csv, genes.json ({len(self.canonical_genes):,} genes), "
               f"samples.json ({len(samples):,} samples)")
 
-        # Expression matrix
+        # Merge batch parquets → one final parquet (streaming, low memory)
+        print(f"Merging {len(self.batch_paths)} batch files into expression.parquet...",
+              flush=True)
+        merged_parts = []
+        for i, bp in enumerate(self.batch_paths):
+            batch_df = pd.read_parquet(bp)
+            # Filter to canonical genes (drop zero-expression genes)
+            batch_df = batch_df.loc[self.canonical_genes]
+            merged_parts.append(batch_df)
+
+            # Merge in chunks of 10 to limit memory
+            if len(merged_parts) >= 10:
+                merged_parts = [pd.concat(merged_parts, axis=1)]
+                gc.collect()
+
+            if (i + 1) % 20 == 0 or (i + 1) == len(self.batch_paths):
+                print(f"  {i + 1}/{len(self.batch_paths)} batch files read", flush=True)
+
+        combined = pd.concat(merged_parts, axis=1)
         expr_path = out / "expression.parquet"
-        self.expr.to_parquet(expr_path, compression="zstd")
-        print(f"Saved {expr_path}: {self.expr.shape}")
+        combined.to_parquet(expr_path, compression="zstd")
+        print(f"Saved {expr_path}: {combined.shape}")
+        del combined, merged_parts
+        gc.collect()
 
         # Metadata
         meta_path = out / "metadata.csv"
         self.meta.to_csv(meta_path, index=False)
         print(f"Saved {meta_path}: {len(self.meta):,} rows")
 
+        # Clean up temp batch files
+        tmp_dir = Path(self.config.output_dir) / "_tmp_batches"
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir)
+            print(f"Cleaned up {tmp_dir}")
+
         print("Done.")
 
     def get_data(self) -> tuple[np.ndarray, pd.DataFrame]:
         """
-        Get processed data as a numpy array.
+        Get processed data as a numpy array by reading batch parquets.
 
         Returns:
             (X, metadata) where X is [samples, genes] float32 array
         """
-        X = self.expr.values.T.astype(np.float32)  # [samples, genes]
+        parts = []
+        for bp in self.batch_paths:
+            batch_df = pd.read_parquet(bp)
+            batch_df = batch_df.loc[self.canonical_genes]
+            parts.append(batch_df)
+        combined = pd.concat(parts, axis=1)
+        X = combined.values.T.astype(np.float32)  # [samples, genes]
         return X, self.meta
 
 
@@ -501,8 +668,11 @@ if __name__ == "__main__":
                         choices=["shared_orthologs", "union_orthologs"])
     parser.add_argument("--output-dir", default="data/archs4/train_orthologs")
     parser.add_argument("--qc-min-nonzero", type=int, default=14_000)
-    parser.add_argument("--normalization", default="log1p_tpm",
+    parser.add_argument("--normalization", default="tpm",
                         choices=["log1p_tpm", "tpm", "raw_counts"])
+    parser.add_argument("--max-samples", type=int, default=None,
+                        help="Max samples per species (default: all). "
+                             "Useful for quick test runs.")
     args = parser.parse_args()
 
     config = PreprocessingConfig(
@@ -511,6 +681,7 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         qc_min_nonzero=args.qc_min_nonzero,
         normalization=args.normalization,
+        max_samples_per_species=args.max_samples,
     )
 
     builder = RNADatasetBuilder(config=config)
