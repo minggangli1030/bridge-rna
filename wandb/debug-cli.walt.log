@@ -345,3 +345,519 @@ wandb.errors.errors.CommError: Sweep walt_/expression-performer/4de5eeaw not fou
 	weight_decay: 0.01
 2026-03-14 11:32:03 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
 2026-03-14 11:32:08 INFO Running runs: ['ngkrhv7p']
+2026-03-15 17:22:36 INFO Running runs: []
+2026-03-15 17:22:36 INFO Agent received command: run
+2026-03-15 17:22:36 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-15 17:22:36 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:22:41 INFO Running runs: ['li0lawry']
+2026-03-15 17:22:46 INFO Cleaning up finished run: li0lawry
+2026-03-15 17:22:47 INFO Agent received command: run
+2026-03-15 17:22:47 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0.05
+2026-03-15 17:22:47 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:22:52 INFO Running runs: ['4ilfpnwh']
+2026-03-15 17:22:52 INFO Cleaning up finished run: 4ilfpnwh
+2026-03-15 17:23:39 INFO Running runs: []
+2026-03-15 17:23:39 INFO Agent received command: run
+2026-03-15 17:23:39 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0
+2026-03-15 17:23:39 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:23:44 INFO Running runs: ['sjh3nzat']
+2026-03-15 17:23:44 INFO Cleaning up finished run: sjh3nzat
+2026-03-15 17:23:45 INFO Agent received command: run
+2026-03-15 17:23:45 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0.01
+2026-03-15 17:23:45 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:23:50 INFO Running runs: ['ewt34vr5']
+2026-03-15 17:23:50 INFO Cleaning up finished run: ewt34vr5
+2026-03-15 17:23:51 INFO Agent received command: run
+2026-03-15 17:23:51 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0
+2026-03-15 17:23:51 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:23:56 INFO Running runs: ['817him4i']
+2026-03-15 17:23:56 ERROR Detected 3 failed runs in the first 60 seconds, shutting down.
+2026-03-15 17:23:56 INFO To disable this check set WANDB_AGENT_DISABLE_FLAPPING=true
+2026-03-15 17:24:17 INFO Running runs: []
+2026-03-15 17:24:17 INFO Agent received command: run
+2026-03-15 17:24:17 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0001
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-15 17:24:17 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:24:22 INFO Running runs: ['yq3mhid5']
+2026-03-15 17:24:27 INFO Cleaning up finished run: yq3mhid5
+2026-03-15 17:24:28 INFO Agent received command: run
+2026-03-15 17:24:28 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 5e-05
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-15 17:24:28 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 17:24:33 INFO Running runs: ['ixva8q18']
+2026-03-15 17:24:38 INFO Cleaning up finished run: ixva8q18
+2026-03-15 18:19:03 INFO Running runs: []
+2026-03-15 18:19:04 INFO Agent received command: run
+2026-03-15 18:19:04 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0.05
+2026-03-15 18:19:04 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 18:19:09 INFO Running runs: ['fccx6gtz']
+2026-03-15 18:49:40 INFO Cleaning up finished run: fccx6gtz
+2026-03-15 18:49:41 INFO Agent received command: run
+2026-03-15 18:49:41 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-15 18:49:41 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 18:49:47 INFO Running runs: ['lhhwc6v7']
+2026-03-15 19:20:45 INFO Cleaning up finished run: lhhwc6v7
+2026-03-15 19:20:46 INFO Agent received command: run
+2026-03-15 19:20:46 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0.05
+2026-03-15 19:20:46 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 19:20:51 INFO Running runs: ['r04z9mb1']
+2026-03-15 19:51:58 INFO Cleaning up finished run: r04z9mb1
+2026-03-15 19:51:59 INFO Agent received command: run
+2026-03-15 19:51:59 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0.01
+2026-03-15 19:51:59 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 19:52:04 INFO Running runs: ['27cglxc4']
+2026-03-15 20:22:33 INFO Cleaning up finished run: 27cglxc4
+2026-03-15 20:22:34 INFO Agent received command: run
+2026-03-15 20:22:34 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0
+2026-03-15 20:22:34 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 20:22:39 INFO Running runs: ['mgu45pna']
+2026-03-15 20:53:34 INFO Cleaning up finished run: mgu45pna
+2026-03-15 20:53:34 INFO Agent received command: run
+2026-03-15 20:53:34 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0.01
+2026-03-15 20:53:34 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 20:53:39 INFO Running runs: ['9or41eun']
+2026-03-15 21:24:32 INFO Cleaning up finished run: 9or41eun
+2026-03-15 21:24:32 INFO Agent received command: run
+2026-03-15 21:24:32 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0
+2026-03-15 21:24:32 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 21:24:37 INFO Running runs: ['mrmc51yx']
+2026-03-15 21:55:31 INFO Cleaning up finished run: mrmc51yx
+2026-03-15 21:55:31 INFO Agent received command: run
+2026-03-15 21:55:31 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 5e-05
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0.05
+2026-03-15 21:55:31 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 21:55:36 INFO Running runs: ['jsqw9md6']
+2026-03-15 22:26:26 INFO Cleaning up finished run: jsqw9md6
+2026-03-15 22:26:27 INFO Agent received command: run
+2026-03-15 22:26:27 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0
+2026-03-15 22:26:27 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 22:26:32 INFO Running runs: ['61zjjflb']
+2026-03-15 22:57:04 INFO Cleaning up finished run: 61zjjflb
+2026-03-15 22:57:05 INFO Agent received command: run
+2026-03-15 22:57:05 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-15 22:57:05 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 22:57:10 INFO Running runs: ['z4j9zd6q']
+2026-03-15 23:28:59 INFO Cleaning up finished run: z4j9zd6q
+2026-03-15 23:28:59 INFO Agent received command: run
+2026-03-15 23:28:59 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 50
+	weight_decay: 0
+2026-03-15 23:28:59 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-15 23:29:04 INFO Running runs: ['dhvf6drp']
+2026-03-16 00:00:57 INFO Cleaning up finished run: dhvf6drp
+2026-03-16 00:00:58 INFO Agent received command: run
+2026-03-16 00:00:58 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0.01
+2026-03-16 00:00:58 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 00:01:03 INFO Running runs: ['0d5fxclh']
+2026-03-16 00:32:42 INFO Cleaning up finished run: 0d5fxclh
+2026-03-16 00:32:43 INFO Agent received command: run
+2026-03-16 00:32:43 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 00:32:43 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 00:32:48 INFO Running runs: ['y82dglgq']
+2026-03-16 01:04:05 INFO Cleaning up finished run: y82dglgq
+2026-03-16 01:04:06 INFO Agent received command: run
+2026-03-16 01:04:06 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 01:04:06 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 01:04:11 INFO Running runs: ['hf07uc86']
+2026-03-16 01:35:29 INFO Cleaning up finished run: hf07uc86
+2026-03-16 01:35:30 INFO Agent received command: run
+2026-03-16 01:35:30 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 01:35:30 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 01:35:35 INFO Running runs: ['8guibnru']
+2026-03-16 02:06:59 INFO Cleaning up finished run: 8guibnru
+2026-03-16 02:07:01 INFO Agent received command: run
+2026-03-16 02:07:01 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 02:07:01 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 02:07:06 INFO Running runs: ['rhkeza6e']
+2026-03-16 02:39:17 INFO Cleaning up finished run: rhkeza6e
+2026-03-16 02:39:18 INFO Agent received command: run
+2026-03-16 02:39:18 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-16 02:39:18 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 02:39:23 INFO Running runs: ['2yrckpjd']
+2026-03-16 03:11:44 INFO Cleaning up finished run: 2yrckpjd
+2026-03-16 03:11:45 INFO Agent received command: run
+2026-03-16 03:11:45 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-16 03:11:45 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 03:11:50 INFO Running runs: ['bxx32acs']
+2026-03-16 03:44:47 INFO Cleaning up finished run: bxx32acs
+2026-03-16 03:44:47 INFO Agent received command: run
+2026-03-16 03:44:47 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 03:44:47 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 03:44:52 INFO Running runs: ['elfk27ge']
+2026-03-16 04:17:13 INFO Cleaning up finished run: elfk27ge
+2026-03-16 04:17:14 INFO Agent received command: run
+2026-03-16 04:17:14 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-16 04:17:14 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 04:17:19 INFO Running runs: ['12kmi8w7']
+2026-03-16 04:48:45 INFO Cleaning up finished run: 12kmi8w7
+2026-03-16 04:48:46 INFO Agent received command: run
+2026-03-16 04:48:46 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 04:48:46 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 04:48:51 INFO Running runs: ['qy2xjpe9']
+2026-03-16 05:20:33 INFO Cleaning up finished run: qy2xjpe9
+2026-03-16 05:20:35 INFO Agent received command: run
+2026-03-16 05:20:35 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 05:20:35 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 05:20:40 INFO Running runs: ['skrkg9ms']
+2026-03-16 05:52:48 INFO Cleaning up finished run: skrkg9ms
+2026-03-16 05:52:49 INFO Agent received command: run
+2026-03-16 05:52:49 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 05:52:49 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 05:52:54 INFO Running runs: ['t0k2ynv7']
+2026-03-16 06:24:46 INFO Cleaning up finished run: t0k2ynv7
+2026-03-16 06:24:48 INFO Agent received command: run
+2026-03-16 06:24:48 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0
+2026-03-16 06:24:48 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 06:24:53 INFO Running runs: ['f1xysgpb']
+2026-03-16 06:56:44 INFO Cleaning up finished run: f1xysgpb
+2026-03-16 06:56:44 INFO Agent received command: run
+2026-03-16 06:56:44 INFO Agent starting run with config:
+	early_stopping: False
+	epochs: 5
+	ffn_dim: 1024
+	hidden_dim: 256
+	learning_rate: 0.0002
+	mask_ratio: 0.1
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 200
+	weight_decay: 0.01
+2026-03-16 06:56:44 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-16 06:56:49 INFO Running runs: ['kglr0zf7']

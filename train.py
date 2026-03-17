@@ -68,21 +68,25 @@ except ImportError:
 CONFIG = {
     'hidden_dim': 256,
     'ffn_dim': 1024,
-    'num_heads': 4,
+    'num_heads': 8,
     'num_layers': 2,
     'ree_base': 100.0,
     'feature_type': 'sqr',       # Linear attention kernel: 'relu', 'elu+1', 'sqr', 'favor+'
     'compute_type': 'iter',      # Prefix sum method: 'iter', 'ps', 'parallel_ps'
+    'normalization': 'tpm',      # 'tpm' or 'log1p_tpm' applied before REE/model input
     'mask_ratio': 0.15,
     'mask_token': -10,
     'learning_rate': 1e-4,
     'weight_decay': 1e-5,
     'batch_size': 16,
     'epochs': 5,
+    'early_stopping': True,
     'patience': 5,
+    'seed': 42,
     # Data subset sizes (set to None for full data)
     'train_subset': 10000,
     'val_subset': 2000,
+    'balanced_sampling': True,
     'data_dir': './data/archs4/train_orthologs',
     'checkpoint_dir': './checkpoints_performer',
 }
@@ -246,32 +250,177 @@ class ExpressionMLMDataset(Dataset):
 # ============================================================
 # DATA LOADING
 # ============================================================
-def load_parquet_data(path, subset=None):
-    """Load parquet file, transpose to [samples, genes], optionally subset."""
+def load_parquet_data(path):
+    """Load parquet file and transpose to [samples, genes]."""
     df = pd.read_parquet(path)
     data = df.values.T.astype(np.float32)  # [samples, genes]
-    if subset is not None:
-        data = data[:subset, :]
     return data
 
 
-def load_split(data_dir, split, species_list, subset=None, verbose=True):
-    """Load and concatenate data for a split (train/val/test)."""
-    arrays = []
+def _split_bounds(n: int) -> tuple[int, int]:
+    """Return split boundaries for 80/10/10 train/val/test."""
+    n_train = int(n * 0.8)
+    n_val = int(n * 0.1)
+    return n_train, n_train + n_val
+
+
+def _load_unified_split_arrays(data_dir, split, species_list, seed=42, verbose=True):
+    """Load split arrays from unified expression.parquet + metadata.csv layout.
+
+    Expected unified files:
+      - data_dir / expression.parquet (genes x samples)
+      - data_dir / metadata.csv       (geo_accession, species)
+    """
+    expr_path = data_dir / 'expression.parquet'
+    meta_path = data_dir / 'metadata.csv'
+    if not expr_path.exists() or not meta_path.exists():
+        raise FileNotFoundError(
+            f"Unified data files not found under {data_dir} "
+            f"(expected expression.parquet and metadata.csv)"
+        )
+
+    if verbose:
+        print(f"  ↳ Using unified dataset fallback from {expr_path}")
+
+    # [samples, genes] with sample IDs as index
+    expr_df = pd.read_parquet(expr_path).T
+    meta_df = pd.read_csv(meta_path)
+    if 'geo_accession' not in meta_df.columns or 'species' not in meta_df.columns:
+        raise ValueError("metadata.csv must contain columns: geo_accession, species")
+
+    arrays = {}
+    raw_counts = {}
+
+    for sp in species_list:
+        sp_ids = meta_df.loc[meta_df['species'] == sp, 'geo_accession'].tolist()
+        sp_ids = [sid for sid in sp_ids if sid in expr_df.index]
+        if not sp_ids:
+            if verbose:
+                print(f"  ✗ {sp} {split}: no samples in unified metadata")
+            continue
+
+        rng = np.random.default_rng(seed + (abs(hash(sp)) % 10000))
+        perm = rng.permutation(len(sp_ids))
+        sp_ids = [sp_ids[i] for i in perm]
+
+        n_train, n_val_end = _split_bounds(len(sp_ids))
+        if split == 'train':
+            ids = sp_ids[:n_train]
+        elif split == 'val':
+            ids = sp_ids[n_train:n_val_end]
+        elif split == 'test':
+            ids = sp_ids[n_val_end:]
+        else:
+            raise ValueError(f"Unknown split: {split!r}")
+
+        arr = expr_df.loc[ids].values.astype(np.float32)
+        arrays[sp] = arr
+        raw_counts[sp] = int(arr.shape[0])
+        if verbose:
+            print(f"  ✓ {sp} {split} (unified): {arr.shape}")
+
+    return arrays, raw_counts
+
+
+def _sample_rows(arr: np.ndarray, n: int, rng: np.random.Generator) -> np.ndarray:
+    if n >= len(arr):
+        return arr
+    idx = rng.choice(len(arr), size=n, replace=False)
+    return arr[idx]
+
+
+def apply_input_normalization(x: np.ndarray, normalization: str) -> np.ndarray:
+    """Apply input normalization mode expected by the model."""
+    if normalization == 'tpm':
+        return x.astype(np.float32, copy=False)
+    if normalization == 'log1p_tpm':
+        # Clamp negatives to 0 before log1p for numerical stability.
+        return np.log1p(np.maximum(x, 0.0)).astype(np.float32, copy=False)
+    raise ValueError(f"Unknown normalization: {normalization!r}")
+
+
+def format_float_for_tag(v: float) -> str:
+    s = f"{v:.2e}" if (abs(v) < 1e-3 or abs(v) >= 1e3) else f"{v:.6f}"
+    return s.replace('.', 'p').replace('+', '').replace('-', 'm')
+
+
+def build_run_tag(cfg: dict) -> str:
+    return (
+        f"norm-{cfg['normalization']}"
+        f"_lr-{format_float_for_tag(cfg['learning_rate'])}"
+        f"_wd-{format_float_for_tag(cfg['weight_decay'])}"
+        f"_mask-{format_float_for_tag(cfg['mask_ratio'])}"
+        f"_ree-{format_float_for_tag(cfg['ree_base'])}"
+    )
+
+
+def load_split(
+    data_dir,
+    split,
+    species_list,
+    subset=None,
+    balanced_sampling=True,
+    seed=42,
+    verbose=True,
+):
+    """Load split data and optionally subset with 50/50 species balancing.
+
+    Returns:
+        data: [samples, genes]
+        used_counts: samples used per species after subsetting
+        raw_counts: samples available per species before subsetting
+    """
+    arrays = {}
+    raw_counts = {}
     for species in species_list:
         path = data_dir / split / f'expression_{split}_{species}.parquet'
         if path.exists():
-            arr = load_parquet_data(path, subset=subset)
+            arr = load_parquet_data(path)
             if verbose:
                 print(f"  ✓ {species} {split}: {arr.shape}")
-            arrays.append(arr)
+            arrays[species] = arr
+            raw_counts[species] = int(arr.shape[0])
         elif verbose:
             print(f"  ✗ {species} {split}: not found")
+
+    # Fallback: unified layout (expression.parquet + metadata.csv)
+    if not arrays:
+        arrays, raw_counts = _load_unified_split_arrays(
+            data_dir,
+            split,
+            species_list,
+            seed=seed,
+            verbose=verbose,
+        )
 
     if not arrays:
         raise FileNotFoundError(f"No data found for split={split}")
 
-    return np.vstack(arrays)
+    rng = np.random.default_rng(seed)
+
+    if subset is not None:
+        if balanced_sampling:
+            # 50/50 species sampling for sweeps to avoid species dominance.
+            per_species_target = max(1, subset // max(1, len(arrays)))
+            max_balanced = min(arr.shape[0] for arr in arrays.values())
+            per_species = min(per_species_target, max_balanced)
+            arrays = {
+                sp: _sample_rows(arr, per_species, rng)
+                for sp, arr in arrays.items()
+            }
+            if verbose:
+                print(
+                    f"  ↳ Balanced subset enabled: {per_species} per species "
+                    f"({per_species * len(arrays)} total)"
+                )
+        else:
+            concat_all = np.vstack(list(arrays.values()))
+            concat_all = _sample_rows(concat_all, subset, rng)
+            used_counts = {sp: None for sp in arrays.keys()}
+            return concat_all, used_counts, raw_counts
+
+    used_counts = {sp: int(arr.shape[0]) for sp, arr in arrays.items()}
+    return np.vstack(list(arrays.values())), used_counts, raw_counts
 
 
 # ============================================================
@@ -322,19 +471,47 @@ def main():
     if is_main:
         print("\n[DATA] Loading training data...")
     t0 = time.time()
-    X_train = load_split(data_dir, 'train', species,
-                         subset=CONFIG['train_subset'], verbose=is_main)
+    X_train, train_used_counts, train_raw_counts = load_split(
+        data_dir,
+        'train',
+        species,
+        subset=CONFIG['train_subset'],
+        balanced_sampling=CONFIG['balanced_sampling'],
+        seed=CONFIG['seed'],
+        verbose=is_main,
+    )
     num_samples, num_genes = X_train.shape
     if is_main:
         print(f"  ✓ Combined: {X_train.shape}, Time: {time.time()-t0:.1f}s")
+        print(f"  ↳ train used counts: {train_used_counts}")
+        print(f"  ↳ train raw counts:  {train_raw_counts}")
 
     if is_main:
         print("\n[DATA] Loading validation data...")
     t0 = time.time()
-    X_val = load_split(data_dir, 'val', species,
-                       subset=CONFIG['val_subset'], verbose=is_main)
+    X_val, val_used_counts, val_raw_counts = load_split(
+        data_dir,
+        'val',
+        species,
+        subset=CONFIG['val_subset'],
+        balanced_sampling=CONFIG['balanced_sampling'],
+        seed=CONFIG['seed'] + 1,
+        verbose=is_main,
+    )
     if is_main:
         print(f"  ✓ Combined: {X_val.shape}, Time: {time.time()-t0:.1f}s")
+        print(f"  ↳ val used counts: {val_used_counts}")
+        print(f"  ↳ val raw counts:  {val_raw_counts}")
+
+    # Apply selected normalization before sending values into REE/model.
+    X_train = apply_input_normalization(X_train, CONFIG['normalization'])
+    X_val = apply_input_normalization(X_val, CONFIG['normalization'])
+    if is_main:
+        print(
+            f"[DATA] Input normalization='{CONFIG['normalization']}' | "
+            f"train range=({X_train.min():.4f}, {X_train.max():.4f}) | "
+            f"val range=({X_val.min():.4f}, {X_val.max():.4f})"
+        )
 
     # Sanity checks
     if is_main:
@@ -414,10 +591,12 @@ def main():
 
     ckpt_base = Path(CONFIG['checkpoint_dir'])
     # Per-run subdir (wandb run ID if available, else timestamp)
+    run_timestamp = time.strftime('%Y%m%d_%H%M%S')
     if is_main and HAS_WANDB and wandb.run is not None:
         run_id = wandb.run.id
     else:
-        run_id = time.strftime('%Y%m%d_%H%M%S')
+        run_id = run_timestamp
+    run_tag = build_run_tag(CONFIG)
     ckpt_dir = ckpt_base / run_id
     if is_main:
         ckpt_base.mkdir(exist_ok=True, parents=True)
@@ -430,6 +609,38 @@ def main():
             global_best_val_loss = json.load(f)['val_loss']
     else:
         global_best_val_loss = float('inf')
+
+    run_metadata = {
+        'run_id': run_id,
+        'timestamp': run_timestamp,
+        'run_tag': run_tag,
+        'normalization': CONFIG['normalization'],
+        'sweep_parameters': {
+            'learning_rate': CONFIG['learning_rate'],
+            'weight_decay': CONFIG['weight_decay'],
+            'mask_ratio': CONFIG['mask_ratio'],
+            'ree_base': CONFIG['ree_base'],
+            'early_stopping': CONFIG['early_stopping'],
+        },
+        'architecture': {
+            'hidden_dim': CONFIG['hidden_dim'],
+            'ffn_dim': CONFIG['ffn_dim'],
+            'num_heads': CONFIG['num_heads'],
+            'num_layers': CONFIG['num_layers'],
+        },
+        'dataset': {
+            'train_samples': int(X_train.shape[0]),
+            'val_samples': int(X_val.shape[0]),
+            'num_genes': int(num_genes),
+            'train_used_counts': train_used_counts,
+            'val_used_counts': val_used_counts,
+            'train_raw_counts': train_raw_counts,
+            'val_raw_counts': val_raw_counts,
+            'balanced_sampling': CONFIG['balanced_sampling'],
+            'train_subset': CONFIG['train_subset'],
+            'val_subset': CONFIG['val_subset'],
+        },
+    }
 
     for epoch in range(CONFIG['epochs']):
         epoch_start = time.time()
@@ -524,30 +735,49 @@ def main():
             print(f"  ║ Val Loss:   {epoch_val_loss:.6f}")
             print(f"  ║ Time: {epoch_time:.1f}s")
 
-            torch.save(model_sd, ckpt_dir / f"epoch_{epoch:02d}.pt")
+            checkpoint_payload = {
+                'model_state_dict': model_sd,
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'epoch': epoch + 1,
+                'train_loss': epoch_train_loss,
+                'val_loss': epoch_val_loss,
+                'config': dict(CONFIG),
+                'run_metadata': run_metadata,
+                'total_params': total_params,
+            }
+
+            torch.save(checkpoint_payload, ckpt_dir / f"epoch_{epoch:02d}.pt")
 
             if epoch_val_loss < best_val_loss:
                 best_val_loss = epoch_val_loss
                 patience_counter = 0
-                torch.save(model_sd, ckpt_dir / "best_model.pt")
+                torch.save(checkpoint_payload, ckpt_dir / "best_model.pt")
+                best_named = ckpt_dir / f"best_{run_tag}_run-{run_id}.pt"
+                torch.save(checkpoint_payload, best_named)
                 print(f"  ║ ✓ New best (run)! Saved best_model.pt")
 
                 # Update global best across all runs
                 if epoch_val_loss < global_best_val_loss:
                     global_best_val_loss = epoch_val_loss
-                    torch.save(model_sd, ckpt_base / "best_model.pt")
+                    torch.save(checkpoint_payload, ckpt_base / "best_model.pt")
                     with open(global_best_path, 'w') as f:
                         json.dump({'val_loss': global_best_val_loss,
                                    'run_id': run_id,
-                                   'epoch': epoch + 1}, f, indent=2)
+                                   'epoch': epoch + 1,
+                                   'run_tag': run_tag,
+                                   'normalization': CONFIG['normalization']}, f, indent=2)
                     print(f"  ║ ★ New global best! {epoch_val_loss:.6f}")
             else:
-                patience_counter += 1
-                print(f"  ║ ✗ No improvement ({patience_counter}/{CONFIG['patience']})")
-                if patience_counter >= CONFIG['patience']:
-                    print(f"  ║ ⚠ Early stopping!")
-                    print(f"  ╚════════════════════════════════════════════╝\n")
-                    break
+                if CONFIG['early_stopping']:
+                    patience_counter += 1
+                    print(f"  ║ ✗ No improvement ({patience_counter}/{CONFIG['patience']})")
+                    if patience_counter >= CONFIG['patience']:
+                        print(f"  ║ ⚠ Early stopping!")
+                        print(f"  ╚════════════════════════════════════════════╝\n")
+                        break
+                else:
+                    print("  ║ ✗ No improvement (early_stopping=False; continuing)")
 
             print(f"  ╚════════════════════════════════════════════╝\n")
 
@@ -556,10 +786,24 @@ def main():
     # ─────────────────────────────────────────────────────────
     if is_main:
         # Config
-        cfg = {**CONFIG, 'num_genes': num_genes, 'total_params': total_params,
-               'best_val_loss': best_val_loss, 'final_epoch': epoch + 1}
+        cfg = {
+            **CONFIG,
+            'num_genes': num_genes,
+            'total_params': total_params,
+            'best_val_loss': best_val_loss,
+            'final_epoch': epoch + 1,
+            'run_id': run_id,
+            'timestamp': run_timestamp,
+            'run_tag': run_tag,
+            'dataset': run_metadata['dataset'],
+            'architecture': run_metadata['architecture'],
+            'sweep_parameters': run_metadata['sweep_parameters'],
+        }
         with open(ckpt_dir / "config.json", 'w') as f:
             json.dump(cfg, f, indent=2)
+
+        with open(ckpt_dir / "run_metadata.json", 'w') as f:
+            json.dump(run_metadata, f, indent=2)
 
         # Loss CSV
         pd.DataFrame({'epoch': range(len(train_losses)),

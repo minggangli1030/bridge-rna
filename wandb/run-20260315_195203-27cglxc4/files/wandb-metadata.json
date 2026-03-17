@@ -1,0 +1,45 @@
+{
+  "os": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.19",
+  "startedAt": "2026-03-16T02:52:03.633649Z",
+  "program": "/home/walt/Attention/train.py",
+  "codePath": "train.py",
+  "codePathLocal": "train.py",
+  "git": {
+    "remote": "git@github.com:alwalt/bridge-rna.git",
+    "commit": "c72774bf906459e3665ffe8038dff456ecee83d7"
+  },
+  "email": "walt@uchicago.edu",
+  "root": "/home/walt/Attention",
+  "host": "feynman",
+  "executable": "/home/walt/miniconda3/envs/esm2/bin/python3.10",
+  "cpu_count": 16,
+  "cpu_count_logical": 32,
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "1081101176832",
+      "used": "587468922880"
+    }
+  },
+  "memory": {
+    "total": "67381587968"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3090",
+      "memoryTotal": "25769803776",
+      "architecture": "Ampere",
+      "uuid": "GPU-bf0542f5-2161-8ce9-35c1-54049b118ce4"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 3090",
+      "memoryTotal": "25769803776",
+      "architecture": "Ampere",
+      "uuid": "GPU-af0b7427-0737-ffbe-b560-b80c2583f637"
+    }
+  ],
+  "cudaVersion": "13.1",
+  "writerId": "70hca7pkadg929itqqavsvy8wc2mdxf4"
+}

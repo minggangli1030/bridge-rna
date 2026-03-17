@@ -1,0 +1,109 @@
+
+[DATA] Loading training data...
+  ✗ human train: not found
+  ✗ mouse train: not found
+  ↳ Using unified dataset fallback from data/archs4/train_orthologs/expression.parquet
+  ✓ human train (unified): (6713, 15165)
+  ✓ mouse train (unified): (5978, 15165)
+  ↳ Balanced subset enabled: 5000 per species (10000 total)
+  ✓ Combined: (10000, 15165), Time: 7.8s
+  ↳ train used counts: {'human': 5000, 'mouse': 5000}
+  ↳ train raw counts:  {'human': 6713, 'mouse': 5978}
+
+[DATA] Loading validation data...
+  ✗ human val: not found
+  ✗ mouse val: not found
+  ↳ Using unified dataset fallback from data/archs4/train_orthologs/expression.parquet
+  ✓ human val (unified): (839, 15165)
+  ✓ mouse val (unified): (747, 15165)
+  ↳ Balanced subset enabled: 747 per species (1494 total)
+  ✓ Combined: (1494, 15165), Time: 6.8s
+  ↳ val used counts: {'human': 747, 'mouse': 747}
+  ↳ val raw counts:  {'human': 839, 'mouse': 747}
+[DATA] Input normalization='log1p_tpm' | train range=(0.0000, 13.6036) | val range=(0.0000, 12.8368)
+
+[CHECK] num_genes=15165, train_samples=10000, val_samples=1494
+
+[DATA] Train: 10,000 samples, 313 batches
+[DATA] Val:   1,494 samples, 47 batches
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 5,330,433
+  ✓ AdamW (lr=0.0002)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+
+  Epoch 1/5 | Batch 78/313 | Loss: 3.199852 | Avg: 3.581194
+  Epoch 1/5 | Batch 156/313 | Loss: 2.569304 | Avg: 3.219887
+  Epoch 1/5 | Batch 234/313 | Loss: 1.381613 | Avg: 2.743613
+  Epoch 1/5 | Batch 312/313 | Loss: 1.236561 | Avg: 2.368392
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 1/5
+  ║ Train Loss: 2.364178
+  ║ Val Loss:   1.195896
+  ║ Time: 370.7s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 2/5 | Batch 78/313 | Loss: 1.369894 | Avg: 1.195947
+  Epoch 2/5 | Batch 156/313 | Loss: 1.145433 | Avg: 1.175809
+  Epoch 2/5 | Batch 234/313 | Loss: 1.138505 | Avg: 1.160070
+  Epoch 2/5 | Batch 312/313 | Loss: 1.026586 | Avg: 1.149652
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 2/5
+  ║ Train Loss: 1.149613
+  ║ Val Loss:   1.156389
+  ║ Time: 364.6s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 3/5 | Batch 78/313 | Loss: 1.167695 | Avg: 1.126643
+  Epoch 3/5 | Batch 156/313 | Loss: 1.093228 | Avg: 1.139193
+  Epoch 3/5 | Batch 234/313 | Loss: 1.117641 | Avg: 1.137895
+  Epoch 3/5 | Batch 312/313 | Loss: 0.999497 | Avg: 1.136936
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 3/5
+  ║ Train Loss: 1.137340
+  ║ Val Loss:   1.137895
+  ║ Time: 360.9s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 4/5 | Batch 78/313 | Loss: 1.095306 | Avg: 1.135729
+  Epoch 4/5 | Batch 156/313 | Loss: 1.100049 | Avg: 1.128374
+  Epoch 4/5 | Batch 234/313 | Loss: 1.112788 | Avg: 1.127126
+  Epoch 4/5 | Batch 312/313 | Loss: 1.183236 | Avg: 1.121180
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 4/5
+  ║ Train Loss: 1.121008
+  ║ Val Loss:   1.123443
+  ║ Time: 365.8s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 5/5 | Batch 78/313 | Loss: 1.101039 | Avg: 1.099074
+  Epoch 5/5 | Batch 156/313 | Loss: 1.358708 | Avg: 1.114278
+  Epoch 5/5 | Batch 234/313 | Loss: 1.144244 | Avg: 1.107511
+  Epoch 5/5 | Batch 312/313 | Loss: 1.020001 | Avg: 1.108821
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 5/5
+  ║ Train Loss: 1.108659
+  ║ Val Loss:   1.121120
+  ║ Time: 361.6s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+======================================================================
+Training complete! 1848s (30.8m)
+  Run best val loss:    1.121120
+  Global best val loss: 0.593870
+  Run checkpoints:      checkpoints_performer/9or41eun/
+  Global best model:    checkpoints_performer/best_model.pt
+======================================================================

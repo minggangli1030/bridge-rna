@@ -9,45 +9,41 @@ metric:
   goal: minimize
 
 parameters:
-  # ── Model Architecture ──
+  # ── Fixed Architecture (fast sweeps) ──
   hidden_dim:
-    values: [256, 384]       # Width of transformer. Bigger = more capacity, more VRAM
+    values: [256]
   ffn_dim:
-    # values: [512, 1024, 2048]     # Feed-forward inner dim. Usually 4x hidden_dim
-    values: [1024, 1536]
+    values: [1024]
   num_heads:
-    values: [8]                # Attention heads. hidden_dim must be divisible by this
+    values: [8]
   num_layers:
-    values: [2]             # Depth. More layers = more capacity + slower training
+    values: [2]
+  epochs:
+    values: [5]
+
+  # ── Input scale ──
+  normalization:
+    values: ["log1p_tpm"]
 
   # ── REE (Expression Embedding) ──
   ree_base:
-    values: [50.0, 100.0, 200.0]
+    values: [100.0]
     # Controls frequency spread of sinusoidal encoding
     # Lower  = higher frequency, more sensitive to small expression changes
     # Higher = lower frequency, smoother, more like standard positional encoding
     # 100 = Google's default, 10000 = standard Transformer
 
-  # ── Linear Attention Kernel ──
-  feature_type:
-    values: ["favor+"]
-    # How Q,K are transformed for linear attention:
-    #   sqr    = square (Google's default, stable)
-    #   relu   = ReLU (sparse, aggressive zeroing)
-    #   elu+1  = ELU+1 (smooth, always positive)
-    #   favor+ = random feature approximation of softmax (from Performer paper)
-
   # ── Training ──
   learning_rate:
-    values: [5e-5, 1e-4, 2e-4]
+    values: [2e-4]
     # distribution: log_uniform_values
     # min: 1e-5
     # max: 1e-3
   weight_decay:
     # values: [0.0, 1e-5, 1e-4, 1e-3]
-    values: [0.0, 0.01, 0.05]
-  batch_size:
-    values: [4, 8]
+    values: [0.0]
   mask_ratio:
-    values: [0.10, 0.15]
+    values: [0.15]
     # Fraction of genes masked per sample. Higher = harder task but more training signal
+  early_stopping:
+    values: [false]

@@ -1,0 +1,24 @@
+wandb_version: 1
+
+early_stopping:
+  value: false
+epochs:
+  value: 5
+ffn_dim:
+  value: 1024
+hidden_dim:
+  value: 256
+learning_rate:
+  value: 0.0002
+mask_ratio:
+  value: 0.15
+normalization:
+  value: log1p_tpm
+num_heads:
+  value: 8
+num_layers:
+  value: 2
+ree_base:
+  value: 200
+weight_decay:
+  value: 0.01

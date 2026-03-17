@@ -1,0 +1,20 @@
+
+[DATA] Loading training data...
+  ✗ human train: not found
+  ✗ mouse train: not found
+Traceback (most recent call last):
+  File "/home/walt/Attention/train.py", line 769, in <module>
+    main()
+  File "/home/walt/Attention/train.py", line 399, in main
+    X_train, train_used_counts, train_raw_counts = load_split(
+  File "/home/walt/Attention/train.py", line 322, in load_split
+    raise FileNotFoundError(f"No data found for split={split}")
+FileNotFoundError: No data found for split=train
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/walt/Attention/train.py", line 769, in <module>
+[rank0]:     main()
+[rank0]:   File "/home/walt/Attention/train.py", line 399, in main
+[rank0]:     X_train, train_used_counts, train_raw_counts = load_split(
+[rank0]:   File "/home/walt/Attention/train.py", line 322, in load_split
+[rank0]:     raise FileNotFoundError(f"No data found for split={split}")
+[rank0]: FileNotFoundError: No data found for split=train
