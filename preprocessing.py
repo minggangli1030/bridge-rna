@@ -241,8 +241,8 @@ class ExpressionLoader:
         debug_label: Optional[str] = None,
     ) -> pd.DataFrame:
         """
-        Process samples individually to gracefully skip sketchy samples.
-        Only drops a sample if its normalization/QC fails, not the whole batch.
+        Fallback: process samples individually when batch processing fails.
+        Only used if _normalize_df() returns empty result.
         """
         cfg = self.config
         good_samples = []
@@ -435,14 +435,25 @@ class ExpressionLoader:
 
             chunk_df = pd.DataFrame(raw, index=gene_names, columns=chunk_accessions)
             
-            # Process samples individually so one bad sample doesn't sink the whole batch
-            chunk_df = self._normalize_df_per_sample(
+            # Apply batch-level normalization (same as before)
+            chunk_df = self._normalize_df(
                 chunk_df,
                 gene_lengths,
                 canonical_genes,
                 gene_name_map,
                 debug_label=species,
             )
+            
+            # If batch fails, try per-sample recovery
+            if chunk_df.empty:
+                print(f"  Batch normalization failed, retrying per-sample...")
+                chunk_df = self._normalize_df_per_sample(
+                    pd.DataFrame(raw, index=gene_names, columns=chunk_accessions),
+                    gene_lengths,
+                    canonical_genes,
+                    gene_name_map,
+                    debug_label=species,
+                )
 
             if chunk_df.shape[1] == 0:
                 print(f"{raw.shape[1]} bulk, 0 passed QC")
