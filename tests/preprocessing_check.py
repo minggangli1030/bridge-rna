@@ -204,10 +204,12 @@ def main() -> int:
     df_parts = []
     for batch_file in selected_batch_files:
         df_batch = pd.read_parquet(batch_file)
-        batch_samples[batch_file.name] = df_batch.columns.tolist()
+        # Batch format is sample-major: index=samples, columns=genes.
+        batch_samples[batch_file.name] = df_batch.index.tolist()
         df_parts.append(df_batch)
-    
-    df = pd.concat(df_parts, axis=1).T  # Transpose to [samples, genes]
+
+    # Combine sampled batches by stacking sample rows.
+    df = pd.concat(df_parts, axis=0)
     print(f"Loaded {df.shape[0]} samples from {n_batches_to_load} batch files\n")
 
     section("[ID DIAGNOSTICS] Checking sample-ID uniqueness")

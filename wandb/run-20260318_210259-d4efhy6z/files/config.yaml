@@ -1,0 +1,98 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            8jvv20vthr2xljl8p8pv97h0vdmth33c:
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 16
+                cpu_count_logical: 32
+                cudaVersion: "13.1"
+                disk:
+                    /:
+                        total: "1081101176832"
+                        used: "729079996416"
+                email: walt@uchicago.edu
+                executable: /home/walt/miniconda3/envs/esm2/bin/python3.10
+                git:
+                    commit: db76ce86a8ecb13762315bfb784f7da9c7669611
+                    remote: git@github.com:alwalt/bridge-rna.git
+                gpu: NVIDIA GeForce RTX 3090
+                gpu_count: 2
+                gpu_nvidia:
+                    - architecture: Ampere
+                      memoryTotal: "25769803776"
+                      name: NVIDIA GeForce RTX 3090
+                      uuid: GPU-bf0542f5-2161-8ce9-35c1-54049b118ce4
+                    - architecture: Ampere
+                      memoryTotal: "25769803776"
+                      name: NVIDIA GeForce RTX 3090
+                      uuid: GPU-af0b7427-0737-ffbe-b560-b80c2583f637
+                host: feynman
+                memory:
+                    total: "67381600256"
+                os: Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35
+                program: /home/walt/Attention/train.py
+                python: CPython 3.10.19
+                root: /home/walt/Attention
+                startedAt: "2026-03-19T04:02:59.689888Z"
+                writerId: 8jvv20vthr2xljl8p8pv97h0vdmth33c
+        m: []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 2
+                - 14
+                - 16
+            "4": 3.10.19
+            "5": 0.25.1
+            "12": 0.25.1
+            "13": linux-x86_64
+balanced_sampling:
+    value: true
+batch_size:
+    value: 4
+checkpoint_dir:
+    value: ./checkpoints_performer
+compute_type:
+    value: iter
+data_dir:
+    value: ./data/archs4/train_orthologs
+early_stopping:
+    value: false
+epochs:
+    value: 5
+feature_type:
+    value: sqr
+ffn_dim:
+    value: 2048
+hidden_dim:
+    value: 512
+learning_rate:
+    value: 0.0002
+mask_ratio:
+    value: 0.15
+mask_token:
+    value: -10
+normalization:
+    value: log1p_tpm
+num_heads:
+    value: 8
+num_layers:
+    value: 2
+patience:
+    value: 5
+ree_base:
+    value: 100
+seed:
+    value: 42
+train_subset:
+    value: 20000
+val_subset:
+    value: 4000
+weight_decay:
+    value: 0

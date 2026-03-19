@@ -1,0 +1,48 @@
+
+[DATA] Building sample indices...
+[DEBUG] Found 2 batch files
+[DATA] Total samples available: 7,898
+       human: 4,179 samples
+       mouse: 3,719 samples
+       Balanced to 1,200 per species
+       Train: 2,000 samples
+       Val:   400 samples
+  ✓ Index time: 0.0s
+
+[DATA] Using streaming mode (on-the-fly parquet reads)
+
+[CHECK] num_genes=15165
+
+[DATA] Train: 2,000 samples, 250 batches
+[DATA] Val:   400 samples, 50 batches
+/home/walt/.local/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4876: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  warnings.warn(  # warn only once
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 5,330,433
+  ✓ AdamW (lr=0.0001)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+
+  Epoch 1/1 | Batch 62/250 | Loss: 3.014676 | Avg: 3.635305
+  Epoch 1/1 | Batch 124/250 | Loss: 3.139723 | Avg: 3.348296
+  Epoch 1/1 | Batch 186/250 | Loss: 2.609538 | Avg: 3.186084
+  Epoch 1/1 | Batch 248/250 | Loss: 1.804694 | Avg: 2.997257
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 1/1
+  ║ Train Loss: 2.988501
+  ║ Val Loss:   2.089061
+  ║ Time: 255.3s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+======================================================================
+Training complete! 264s (4.4m)
+  Run best val loss:    2.089061
+  Global best val loss: 0.000000
+  Run checkpoints:      checkpoints_performer/f5136qby/
+  Global best model:    checkpoints_performer/best_model.pt
+======================================================================

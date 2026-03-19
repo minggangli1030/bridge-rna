@@ -1,0 +1,37 @@
+
+[DATA] Building sample indices...
+[DEBUG] Found 2 batch files
+[DATA] Total samples available: 7,898
+       human: 4,179 samples
+       mouse: 3,719 samples
+       Balanced to 1,200 per species
+       Train: 2,000 samples
+       Val:   400 samples
+  ✓ Index time: 0.0s
+
+[DATA] Loading training data into memory...
+  ...loaded 2/2 batch files
+  ✓ Loaded 2,000 samples × 15,165 genes
+[DATA] Loading validation data into memory...
+  ...loaded 2/2 batch files
+  ✓ Loaded 400 samples × 15,165 genes
+
+[CHECK] num_genes=15165
+
+[DATA] Train: 2,000 samples, 250 batches
+[DATA] Val:   400 samples, 50 batches
+/home/walt/.local/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4876: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  warnings.warn(  # warn only once
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 5,330,433
+  ✓ AdamW (lr=0.0001)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+
+  Epoch 1/5 | Batch 62/250 | Loss: 3.095866 | Avg: 3.780229
+  Epoch 1/5 | Batch 124/250 | Loss: 3.060118 | Avg: 3.439215
+  Epoch 1/5 | Batch 186/250 | Loss: 2.756576 | Avg: 3.274826
+  Epoch 1/5 | Batch 248/250 | Loss: 1.978877 | Avg: 3.125917

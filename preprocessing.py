@@ -462,11 +462,13 @@ class ExpressionLoader:
 
         print(f"    {chunk_df.shape[1]:,} samples passed QC")
 
-        # Write single batch parquet
+        # Write single batch parquet as sample-major [samples, genes]
         tmp = Path(tmp_dir)
         tmp.mkdir(parents=True, exist_ok=True)
         batch_path = tmp / f"{species}_batch_0001.parquet"
-        chunk_df.to_parquet(batch_path, compression="zstd")
+        batch_out = chunk_df.T.astype("float32")
+        batch_out.index.name = "geo_accession"
+        batch_out.to_parquet(batch_path, compression="zstd")
 
         metadata = pd.DataFrame({
             "geo_accession": chunk_df.columns.tolist(),
@@ -630,7 +632,9 @@ class ExpressionLoader:
 
             # Write to disk instead of keeping in RAM
             batch_path = tmp / f"{species}_batch_{batch_num:04d}.parquet"
-            chunk_df.to_parquet(batch_path, compression="zstd")
+            batch_out = chunk_df.T.astype("float32")
+            batch_out.index.name = "geo_accession"
+            batch_out.to_parquet(batch_path, compression="zstd")
             batch_paths.append(batch_path)
             all_accessions.extend(chunk_df.columns.tolist())
             total += chunk_df.shape[1]
@@ -739,30 +743,32 @@ class RNADatasetBuilder:
 
             for i, bp in enumerate(paths, 1):
                 batch_df = pd.read_parquet(bp)
+                # Sample-major format: [samples, genes].
                 # Restrict to final canonical genes first; missing genes are zero counts.
-                batch_df = batch_df.reindex(self.canonical_genes, fill_value=0.0)
-                batch_use = batch_df.loc[keep_genes]
-                rate = batch_use.astype(float).div(lengths_kb, axis=0)
+                batch_df = batch_df.reindex(columns=self.canonical_genes, fill_value=0.0)
+                batch_use = batch_df.loc[:, keep_genes]
+                rate = batch_use.astype(float).div(lengths_kb, axis=1)
 
                 if cfg.debug_tpm_denominator and i == 1:
-                    denom_dbg = rate.sum(axis=0)
+                    denom_dbg = rate.sum(axis=1)
                     print(
-                        f"    [TPM DEBUG][{species}] genes_used={rate.shape[0]:,}, "
-                        f"samples={rate.shape[1]:,}, "
+                        f"    [TPM DEBUG][{species}] genes_used={rate.shape[1]:,}, "
+                        f"samples={rate.shape[0]:,}, "
                         f"denom(min/mean/max)={denom_dbg.min():.6f}/"
                         f"{denom_dbg.mean():.6f}/{denom_dbg.max():.6f}"
                     )
                     for sid, d in denom_dbg.head(3).items():
                         print(f"    [TPM DEBUG][{species}] sample={sid} denom={d:.6f}")
 
-                denom = rate.sum(axis=0).replace(0, np.nan)
-                tpm = rate.div(denom, axis=1) * 1e6
-                batch_out = tpm.reindex(self.canonical_genes, fill_value=0.0)
+                denom = rate.sum(axis=1).replace(0, np.nan)
+                tpm = rate.div(denom, axis=0) * 1e6
+                batch_out = tpm.reindex(columns=self.canonical_genes, fill_value=0.0)
 
                 if cfg.normalization == "log1p_tpm":
                     batch_out = np.log1p(batch_out)
 
                 batch_out = batch_out.astype("float32")
+                batch_out.index.name = "geo_accession"
                 batch_out.to_parquet(bp, compression="zstd")
 
                 if i % 20 == 0 or i == len(paths):
@@ -841,8 +847,8 @@ class RNADatasetBuilder:
                 gene_sum = None
                 for bp in species_batch_paths[species]:
                     batch_df = pd.read_parquet(bp)
-                    # Genes missing from a batch are treated as zero-expression.
-                    batch_sum = batch_df.sum(axis=1).reindex(all_ortho, fill_value=0)
+                    # Sample-major format [samples, genes]: sum per gene is axis=0.
+                    batch_sum = batch_df.sum(axis=0).reindex(all_ortho, fill_value=0)
                     if gene_sum is None:
                         gene_sum = batch_sum
                     else:
@@ -915,7 +921,7 @@ class RNADatasetBuilder:
         Merge batch parquets into final output, filtering to canonical genes.
 
         Output:
-            {output_dir}/expression.parquet   (genes × samples, float32, zstd)
+            Batch files in {output_dir}/batch_files (samples × genes, float32, zstd)
             {output_dir}/metadata.csv          (geo_accession, species)
             {output_dir}/canonical_genes.csv   (token_id, gene_symbol)
         """
@@ -945,7 +951,7 @@ class RNADatasetBuilder:
         for i, batch_path in enumerate(self.batch_paths, 1):
             df_batch = pd.read_parquet(batch_path)
             batch_name = f"batch_{i:04d}.parquet"
-            sample_ids = df_batch.columns.tolist()
+            sample_ids = df_batch.index.tolist()
             batch_manifest[batch_name] = sample_ids
         
         with open(out / "batch_manifest.json", "w") as f:
@@ -975,10 +981,10 @@ class RNADatasetBuilder:
         parts = []
         for bp in self.batch_paths:
             batch_df = pd.read_parquet(bp)
-            batch_df = batch_df.reindex(self.canonical_genes, fill_value=0)
+            batch_df = batch_df.reindex(columns=self.canonical_genes, fill_value=0)
             parts.append(batch_df)
-        combined = pd.concat(parts, axis=1)
-        X = combined.values.T.astype(np.float32)  # [samples, genes]
+        combined = pd.concat(parts, axis=0)
+        X = combined.values.astype(np.float32)  # [samples, genes]
         return X, self.meta
 
 

@@ -1,5 +1,7 @@
 {
-  "val_loss": 0.5938697457313538,
-  "run_id": "g0osbc7v",
-  "epoch": 5
+  "val_loss": 0.0,
+  "run_id": "d4efhy6z",
+  "epoch": 1,
+  "run_tag": "norm-log1p_tpm_lr-2p00em04_wd-0p00e00_mask-0p150000_ree-100p000000",
+  "normalization": "log1p_tpm"
 }

@@ -1,0 +1,58 @@
+
+[DATA] Building sample indices...
+[DEBUG] Found 2 batch files
+[DATA] Total samples available: 7,898
+       human: 4,179 samples
+       mouse: 3,719 samples
+       Balanced to 1,200 per species
+       Train: 2,000 samples
+       Val:   400 samples
+  ✓ Index time: 0.0s
+
+[DATA] Loading training data into memory...
+  ...loaded 2/2 batch files
+  ✓ Loaded 2,000 samples × 15,165 genes
+[DATA] Loading validation data into memory...
+  ...loaded 2/2 batch files
+  ✓ Loaded 400 samples × 15,165 genes
+
+[CHECK] num_genes=15165
+
+[DATA] Train: 2,000 samples, 250 batches
+[DATA] Val:   400 samples, 50 batches
+/home/walt/.local/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4876: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  warnings.warn(  # warn only once
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 5,330,433
+  ✓ AdamW (lr=0.0001)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+
+  Epoch 1/5 | Batch 62/250 | Loss: 3.147127 | Avg: 3.765906
+Traceback (most recent call last):
+  File "/home/walt/Attention/train.py", line 897, in <module>
+    main()
+  File "/home/walt/Attention/train.py", line 720, in main
+    loss.backward()
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/_tensor.py", line 625, in backward
+    torch.autograd.backward(
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/autograd/__init__.py", line 354, in backward
+    _engine_run_backward(
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/autograd/graph.py", line 841, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+KeyboardInterrupt
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/walt/Attention/train.py", line 897, in <module>
+[rank0]:     main()
+[rank0]:   File "/home/walt/Attention/train.py", line 720, in main
+[rank0]:     loss.backward()
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/_tensor.py", line 625, in backward
+[rank0]:     torch.autograd.backward(
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/autograd/__init__.py", line 354, in backward
+[rank0]:     _engine_run_backward(
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/autograd/graph.py", line 841, in _engine_run_backward
+[rank0]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank0]: KeyboardInterrupt

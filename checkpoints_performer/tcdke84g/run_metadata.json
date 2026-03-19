@@ -1,0 +1,31 @@
+{
+  "run_id": "tcdke84g",
+  "timestamp": "20260318_210359",
+  "run_tag": "norm-log1p_tpm_lr-2p00em04_wd-0p00e00_mask-0p150000_ree-100p000000",
+  "normalization": "log1p_tpm",
+  "sweep_parameters": {
+    "learning_rate": 0.0002,
+    "weight_decay": 0,
+    "mask_ratio": 0.15,
+    "ree_base": 100,
+    "early_stopping": false
+  },
+  "architecture": {
+    "hidden_dim": 512,
+    "ffn_dim": 2048,
+    "num_heads": 8,
+    "num_layers": 4
+  },
+  "dataset": {
+    "train_samples": 0,
+    "val_samples": 0,
+    "num_genes": 15165,
+    "train_used_counts": null,
+    "val_used_counts": null,
+    "train_raw_counts": null,
+    "val_raw_counts": null,
+    "balanced_sampling": true,
+    "train_subset": 20000,
+    "val_subset": 4000
+  }
+}

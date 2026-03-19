@@ -1,0 +1,45 @@
+
+[DATA] Building sample indices...
+[DEBUG] Found 189 batch files
+[DATA] Total samples available: 940,455
+       human: 510,709 samples
+       mouse: 429,746 samples
+       Balanced to 12,000 per species
+       Train: 20,000 samples
+       Val:   4,000 samples
+  ✓ Index time: 11.3s
+
+[DATA] Loading training data into memory...
+  ✓ Loaded 20,000 samples × 15,165 genes
+[DATA] Loading validation data into memory...
+Traceback (most recent call last):
+  File "/home/walt/Attention/train.py", line 861, in <module>
+  File "/home/walt/Attention/train.py", line 524, in main
+    seed=CONFIG['seed'],
+  File "/home/walt/Attention/train.py", line 419, in load_batch_data
+    # Load batch-by-batch, reading only needed sample columns
+  File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 667, in read_parquet
+    return impl.read(
+  File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 281, in read
+    result = pa_table.to_pandas(**to_pandas_kwargs)
+  File "pyarrow/array.pxi", line 1032, in pyarrow.lib._PandasConvertible.to_pandas
+  File "pyarrow/table.pxi", line 5177, in pyarrow.lib.Table._to_pandas
+  File "/home/walt/miniconda3/envs/esm2/lib/python3.10/site-packages/pyarrow/pandas_compat.py", line 811, in table_to_dataframe
+    result = pa.lib.table_to_blocks(options, table, categories,
+KeyboardInterrupt
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/walt/Attention/train.py", line 861, in <module>
+[rank0]:
+[rank0]:   File "/home/walt/Attention/train.py", line 524, in main
+[rank0]:     seed=CONFIG['seed'],
+[rank0]:   File "/home/walt/Attention/train.py", line 419, in load_batch_data
+[rank0]:     # Load batch-by-batch, reading only needed sample columns
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 667, in read_parquet
+[rank0]:     return impl.read(
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 281, in read
+[rank0]:     result = pa_table.to_pandas(**to_pandas_kwargs)
+[rank0]:   File "pyarrow/array.pxi", line 1032, in pyarrow.lib._PandasConvertible.to_pandas
+[rank0]:   File "pyarrow/table.pxi", line 5177, in pyarrow.lib.Table._to_pandas
+[rank0]:   File "/home/walt/miniconda3/envs/esm2/lib/python3.10/site-packages/pyarrow/pandas_compat.py", line 811, in table_to_dataframe
+[rank0]:     result = pa.lib.table_to_blocks(options, table, categories,
+[rank0]: KeyboardInterrupt

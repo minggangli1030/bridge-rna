@@ -1,0 +1,91 @@
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'hidden_dim' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'num_heads' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'num_layers' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'ree_base' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'normalization' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'mask_ratio' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'learning_rate' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'weight_decay' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'batch_size' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'epochs' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'early_stopping' was locked by 'sweep' (ignored update).
+
+[DATA] Building sample index lists (lazy-loading)...
+[DATA] Total samples available: 0
+       Train: 0 samples
+       Val:   0 samples
+  ✓ Time: 17.7s
+
+[CHECK] num_genes=15165
+[DATA] Input normalization: log1p_tpm
+[DATASET] 0 samples from 0 batch files
+[DATASET] Normalization: log1p_tpm
+[DATASET] 0 samples from 0 batch files
+[DATASET] Normalization: log1p_tpm
+
+[DATA] Train: 0 samples, 0 batches
+[DATA] Val:   0 samples, 0 batches
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 13,544,449
+  ✓ AdamW (lr=0.0002)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+/home/walt/.local/lib/python3.10/site-packages/torch/optim/lr_scheduler.py:192: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  warnings.warn(
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 1/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.2s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ║ ★ New global best! 0.000000
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 2/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (early_stopping=False; continuing)
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 3/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (early_stopping=False; continuing)
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 4/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (early_stopping=False; continuing)
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 5/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (early_stopping=False; continuing)
+  ╚════════════════════════════════════════════╝
+
+======================================================================
+Training complete! 26s (0.4m)
+  Run best val loss:    0.000000
+  Global best val loss: 0.000000
+  Run checkpoints:      checkpoints_performer/d4efhy6z/
+  Global best model:    checkpoints_performer/best_model.pt
+======================================================================

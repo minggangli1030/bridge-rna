@@ -1,0 +1,24 @@
+wandb_version: 1
+
+batch_size:
+  value: 4
+early_stopping:
+  value: false
+epochs:
+  value: 5
+hidden_dim:
+  value: 768
+learning_rate:
+  value: 0.0001
+mask_ratio:
+  value: 0.15
+normalization:
+  value: log1p_tpm
+num_heads:
+  value: 8
+num_layers:
+  value: 2
+ree_base:
+  value: 100
+weight_decay:
+  value: 0

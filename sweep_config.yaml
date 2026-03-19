@@ -3,7 +3,7 @@ command:
   - ${env}                 # sets WANDB env vars for each run
   - ${program}             # runs the shell wrapper which calls torchrun
 method: grid
-run_cap: 3
+run_cap: 8
 metric:
   name: val_loss
   goal: minimize
@@ -11,12 +11,12 @@ metric:
 parameters:
   # ── Fixed Architecture (fast sweeps) ──
   hidden_dim:
-    values: [512]
+    values: [512, 768]
   # ffn_dim is auto-computed as hidden_dim * 4 in train.py
   num_heads:
     values: [8]
   num_layers:
-    values: [2]
+    values: [2, 4]
   epochs:
     values: [5]
 
@@ -34,9 +34,9 @@ parameters:
 
   # ── Training ──
   batch_size:
-    values: [4, 8, 16]
+    values: [4]
   learning_rate:
-    values: [2e-4]
+    values: [1e-4, 2e-4]
     # distribution: log_uniform_values
     # min: 1e-5
     # max: 1e-3

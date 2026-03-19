@@ -1,0 +1,89 @@
+
+[DATA] Building sample index lists (lazy-loading)...
+[DEBUG] Looking for batch files at: data/archs4/train_orthologs/batch_files
+[DEBUG] batch_dir.exists(): True
+[DEBUG] Found 189 batch files
+[DATA] Total samples available: 940,455
+       human: 510,709 samples
+       mouse: 429,746 samples
+       Balanced to 10,000 per species
+       Train: 16,000 samples
+       Val:   4,000 samples
+  ✓ Time: 16.2s
+
+[CHECK] num_genes=15165
+[DATA] Input normalization: log1p_tpm
+[DATASET] 16,000 samples from 189 batch files
+[DATASET] Normalization: log1p_tpm
+[DATASET] 4,000 samples from 188 batch files
+[DATASET] Normalization: log1p_tpm
+
+[DATA] Train: 16,000 samples, 2000 batches
+[DATA] Val:   4,000 samples, 500 batches
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 5,330,433
+  ✓ AdamW (lr=0.0001)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+Traceback (most recent call last):
+  File "/home/walt/Attention/train.py", line 918, in <module>
+  File "/home/walt/Attention/train.py", line 725, in main
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 732, in __next__
+    data = self._next_data()
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 788, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/walt/Attention/train.py", line 269, in __getitem__
+    import pyarrow.parquet as pq
+  File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 667, in read_parquet
+    return impl.read(
+  File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 281, in read
+    result = pa_table.to_pandas(**to_pandas_kwargs)
+  File "pyarrow/array.pxi", line 1032, in pyarrow.lib._PandasConvertible.to_pandas
+  File "pyarrow/table.pxi", line 5177, in pyarrow.lib.Table._to_pandas
+  File "/home/walt/miniconda3/envs/esm2/lib/python3.10/site-packages/pyarrow/pandas_compat.py", line 789, in table_to_dataframe
+    pandas_metadata = table.schema.pandas_metadata
+  File "pyarrow/types.pxi", line 2957, in pyarrow.lib.Schema.pandas_metadata.__get__
+  File "/home/walt/miniconda3/envs/esm2/lib/python3.10/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/home/walt/miniconda3/envs/esm2/lib/python3.10/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/home/walt/miniconda3/envs/esm2/lib/python3.10/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+KeyboardInterrupt
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/walt/Attention/train.py", line 918, in <module>
+[rank0]:   File "/home/walt/Attention/train.py", line 725, in main
+[rank0]:
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 732, in __next__
+[rank0]:     data = self._next_data()
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 788, in _next_data
+[rank0]:     data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+[rank0]:     data = [self.dataset[idx] for idx in possibly_batched_index]
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in <listcomp>
+[rank0]:     data = [self.dataset[idx] for idx in possibly_batched_index]
+[rank0]:   File "/home/walt/Attention/train.py", line 269, in __getitem__
+[rank0]:     import pyarrow.parquet as pq
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 667, in read_parquet
+[rank0]:     return impl.read(
+[rank0]:   File "/home/walt/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 281, in read
+[rank0]:     result = pa_table.to_pandas(**to_pandas_kwargs)
+[rank0]:   File "pyarrow/array.pxi", line 1032, in pyarrow.lib._PandasConvertible.to_pandas
+[rank0]:   File "pyarrow/table.pxi", line 5177, in pyarrow.lib.Table._to_pandas
+[rank0]:   File "/home/walt/miniconda3/envs/esm2/lib/python3.10/site-packages/pyarrow/pandas_compat.py", line 789, in table_to_dataframe
+[rank0]:     pandas_metadata = table.schema.pandas_metadata
+[rank0]:   File "pyarrow/types.pxi", line 2957, in pyarrow.lib.Schema.pandas_metadata.__get__
+[rank0]:   File "/home/walt/miniconda3/envs/esm2/lib/python3.10/json/__init__.py", line 346, in loads
+[rank0]:     return _default_decoder.decode(s)
+[rank0]:   File "/home/walt/miniconda3/envs/esm2/lib/python3.10/json/decoder.py", line 337, in decode
+[rank0]:     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+[rank0]:   File "/home/walt/miniconda3/envs/esm2/lib/python3.10/json/decoder.py", line 353, in raw_decode
+[rank0]:     obj, end = self.scan_once(s, idx)
+[rank0]: KeyboardInterrupt

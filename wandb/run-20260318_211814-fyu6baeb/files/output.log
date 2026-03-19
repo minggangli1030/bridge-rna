@@ -1,0 +1,82 @@
+
+[DATA] Building sample index lists (lazy-loading)...
+[DEBUG] Looking for batch files at: data/archs4/train_orthologs/batch_files
+[DEBUG] batch_dir.exists(): True
+[DEBUG] Found 189 batch files
+[DATA] Total samples available: 0
+       Train: 0 samples
+       Val:   0 samples
+  ✓ Time: 19.2s
+
+[CHECK] num_genes=15165
+[DATA] Input normalization: log1p_tpm
+[DATASET] 0 samples from 0 batch files
+[DATASET] Normalization: log1p_tpm
+[DATASET] 0 samples from 0 batch files
+[DATASET] Normalization: log1p_tpm
+
+[DATA] Train: 0 samples, 0 batches
+[DATA] Val:   0 samples, 0 batches
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 5,330,433
+  ✓ AdamW (lr=0.0001)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+/home/walt/.local/lib/python3.10/site-packages/torch/optim/lr_scheduler.py:192: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  warnings.warn(
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 1/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.1s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 2/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (1/5)
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 3/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (2/5)
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 4/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (3/5)
+  ╚════════════════════════════════════════════╝
+
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 5/5
+  ║ Train Loss: 0.000000
+  ║ Val Loss:   0.000000
+  ║ Time: 0.0s
+  ║ ✗ No improvement (4/5)
+  ╚════════════════════════════════════════════╝
+
+======================================================================
+Training complete! 26s (0.4m)
+  Run best val loss:    0.000000
+  Global best val loss: 0.000000
+  Run checkpoints:      checkpoints_performer/fyu6baeb/
+  Global best model:    checkpoints_performer/best_model.pt
+======================================================================

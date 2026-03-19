@@ -31,9 +31,18 @@ Usage:
 
 import os
 import sys
+
+# Force unbuffered output for DDP visibility (safe for all ranks)
+try:
+    sys.stdout = open(sys.stdout.fileno(), mode='w', buffering=1)
+    sys.stderr = open(sys.stderr.fileno(), mode='w', buffering=1)
+except Exception as e:
+    print(f"[WARN] Could not set unbuffered output: {e}", file=sys.stderr)
+
 import time
 import json
 from pathlib import Path
+from collections import OrderedDict
 
 import numpy as np
 import torch
@@ -73,19 +82,22 @@ CONFIG = {
     'ree_base': 100.0,
     'feature_type': 'sqr',       # Linear attention kernel: 'relu', 'elu+1', 'sqr', 'favor+'
     'compute_type': 'iter',      # Prefix sum method: 'iter', 'ps', 'parallel_ps'
-    'normalization': 'tpm',      # 'tpm' or 'log1p_tpm' applied before REE/model input
+    'normalization': 'log1p_tpm',      # 'tpm' or 'log1p_tpm' applied before REE/model input
     'mask_ratio': 0.15,
     'mask_token': -10,
     'learning_rate': 1e-4,
-    'weight_decay': 1e-5,
+    'weight_decay': 0,
     'batch_size': 4,
     'epochs': 5,
     'early_stopping': True,
     'patience': 5,
     'seed': 42,
-    # Data subset sizes (set to None for full data)
-    'train_subset': 10000,
-    'val_subset': 2000,
+    # Data loading mode: 'preload' (load arrays into RAM) or 'streaming' (on-the-fly parquet reads)
+    'data_mode': 'streaming',
+    'stream_cache_size': 2,
+    # Data subset sizes (set to None for all available)
+    'train_subset': 20000,
+    'val_subset': 4000,
     'balanced_sampling': True,
     'data_dir': './data/archs4/train_orthologs',
     'checkpoint_dir': './checkpoints_performer',
@@ -217,12 +229,6 @@ class ExpressionMLMDataset(Dataset):
     """Expression dataset with MLM-style masking."""
 
     def __init__(self, expr_array, mask_ratio=0.15, mask_token=-10):
-        """
-        Args:
-            expr_array: [samples, genes] numpy array
-            mask_ratio: fraction of genes to mask per sample
-            mask_token: value for masked positions
-        """
         self.X = expr_array.astype(np.float32)
         self.mask_ratio = mask_ratio
         self.mask_token = mask_token
@@ -247,133 +253,277 @@ class ExpressionMLMDataset(Dataset):
         )
 
 
+class StreamingParquetMLMDataset(Dataset):
+    """On-the-fly sample loading from sample-major parquet batches with small LRU cache."""
+
+    def __init__(self, batch_dir, sample_indices, normalization='tpm', mask_ratio=0.15,
+                 mask_token=-10, cache_size=2):
+        self.batch_dir = Path(batch_dir)
+        self.batch_files = sorted(self.batch_dir.glob("*.parquet"))
+        self.sample_indices = sample_indices
+        self.normalization = normalization
+        self.mask_ratio = mask_ratio
+        self.mask_token = mask_token
+        self.cache_size = max(1, int(cache_size))
+        self._cache = OrderedDict()  # batch_idx -> np.ndarray [samples, genes]
+
+    def __len__(self):
+        return len(self.sample_indices)
+
+    def _get_batch_array(self, batch_idx):
+        if batch_idx in self._cache:
+            self._cache.move_to_end(batch_idx)
+            return self._cache[batch_idx]
+
+        df = pd.read_parquet(self.batch_files[batch_idx])
+        arr = df.to_numpy(dtype=np.float32, copy=False)  # [samples, genes]
+        self._cache[batch_idx] = arr
+        self._cache.move_to_end(batch_idx)
+
+        if len(self._cache) > self.cache_size:
+            self._cache.popitem(last=False)
+
+        return arr
+
+    def __getitem__(self, idx):
+        batch_idx, sample_in_batch = self.sample_indices[idx]
+        batch_arr = self._get_batch_array(batch_idx)
+        x = batch_arr[sample_in_batch].copy()
+
+        if self.normalization == 'log1p_tpm':
+            x = np.log1p(np.maximum(x, 0.0)).astype(np.float32, copy=False)
+
+        num_genes = x.shape[0]
+        num_mask = max(1, int(num_genes * self.mask_ratio))
+        mask_indices = np.random.choice(num_genes, num_mask, replace=False)
+
+        x_masked = x.copy()
+        x_masked[mask_indices] = self.mask_token
+
+        return (
+            torch.tensor(x_masked, dtype=torch.float32),
+            torch.tensor(x, dtype=torch.float32),
+            torch.tensor(mask_indices, dtype=torch.long),
+        )
+
+
 # ============================================================
 # DATA LOADING
 # ============================================================
-def load_from_batch_files(batch_dir, train_frac=0.8, subset=None, balanced_sampling=True, seed=42, verbose=True):
+def get_sample_indices(batch_dir, train_subset=None, val_subset=None, balanced_sampling=True, seed=42, verbose=True):
     """
-    Load expression data from batch parquet files.
-    Splits at the batch-file level (not individual samples) for efficiency.
+    Build sample index lists for train/val without loading all data.
     
     Args:
-        batch_dir: Path to directory containing batch*.parquet files
-        train_frac: Fraction of batch files for training (rest goes to val)
-        subset: Max total samples to load (None = all available, but respects balanced_sampling)
-        balanced_sampling: If True, balance human/mouse species (50/50)
-        seed: Random seed for reproducible splitting
-        verbose: Print progress
+        batch_dir: Path to batch parquet files
+        train_subset: Exact number of train samples to select (None = use all available)
+        val_subset: Exact number of val samples to select (None = use remaining after train)
+        balanced_sampling: If True, balance human/mouse to min count
+        seed: Random seed
+        verbose: Print diagnostics
     
     Returns:
-        (X_train, X_val): Both [samples, genes] arrays
+        (train_sample_indices, val_sample_indices): Lists of
+        (batch_idx, sample_idx_in_batch) tuples where sample_idx_in_batch is row index.
     """
     batch_dir = Path(batch_dir)
     batch_files = sorted(batch_dir.glob("*.parquet"))
     
     if not batch_files:
+        # Final debug before error
+        print(f"[ERROR] No parquet files found in {batch_dir}")
+        print(f"[DEBUG] Directory exists: {batch_dir.exists()}")
+        print(f"[DEBUG] Is directory: {batch_dir.is_dir()}")
+        if batch_dir.exists():
+            print(f"[DEBUG] Files in directory: {list(batch_dir.iterdir())[:10]}")
         raise FileNotFoundError(f"No parquet files found in {batch_dir}")
     
-    # Load metadata to determine species per batch
+    if verbose:
+        print(f"[DEBUG] Found {len(batch_files)} batch files")
+    
+    # Load metadata to track species per sample
     metadata_file = batch_dir.parent / "samples.json"
     sample_to_species = {}
     if metadata_file.exists():
-        import json
         with open(metadata_file) as f:
             samples_meta = json.load(f)
-        # Build species mapping: sample_id → species
         sample_to_species = {s["id"]: s["species"] for s in samples_meta if "species" in s}
     
-    # Deterministic shuffle and split
     rng = np.random.default_rng(seed)
-    indices = np.arange(len(batch_files))
-    rng.shuffle(indices)
     
-    split_idx = int(len(batch_files) * train_frac)
-    train_indices = indices[:split_idx]
-    val_indices = indices[split_idx:]
+    # Build master list of all (batch_idx, sample_in_batch, species) tuples.
+    # New preprocessing saves sample-major batch files, so sample IDs are parquet index.
+    all_samples = []  # [(batch_idx, sample_in_batch, species), ...]
+
+    manifest_path = batch_dir.parent / "batch_manifest.json"
+    if manifest_path.exists():
+        with open(manifest_path) as f:
+            batch_manifest = json.load(f)
+
+        # Prefer direct filename lookup; fallback to positional lists for legacy
+        # manifests that use synthetic keys like batch_0001.parquet.
+        ordered_manifest_lists = [batch_manifest[k] for k in sorted(batch_manifest.keys())]
+
+        for batch_idx, batch_file in enumerate(batch_files):
+            sample_ids = batch_manifest.get(batch_file.name)
+            if sample_ids is None and batch_idx < len(ordered_manifest_lists):
+                sample_ids = ordered_manifest_lists[batch_idx]
+            if sample_ids is None:
+                sample_ids = []
+            for sample_idx, sample_id in enumerate(sample_ids):
+                species = sample_to_species.get(sample_id, "unknown")
+                all_samples.append((batch_idx, sample_idx, species))
+
+        # If manifest exists but produced no sample rows, fallback to parquet index.
+        if not all_samples:
+            for batch_idx, batch_file in enumerate(batch_files):
+                df = pd.read_parquet(batch_file)
+                sample_ids = df.index.tolist()
+                for sample_idx, sample_id in enumerate(sample_ids):
+                    species = sample_to_species.get(sample_id, "unknown")
+                    all_samples.append((batch_idx, sample_idx, species))
+    else:
+        # Fallback for legacy data without manifest: read index from each parquet.
+        for batch_idx, batch_file in enumerate(batch_files):
+            df = pd.read_parquet(batch_file)
+            sample_ids = df.index.tolist()
+            for sample_idx, sample_id in enumerate(sample_ids):
+                species = sample_to_species.get(sample_id, "unknown")
+                all_samples.append((batch_idx, sample_idx, species))
     
     if verbose:
-        print(f"[DATA] Batch files: {len(batch_files)} total")
-        print(f"       Train: {len(train_indices)} files, Val: {len(val_indices)} files")
+        print(f"[DATA] Total samples available: {len(all_samples):,}", flush=True)
     
-    # Load and concatenate batch files
-    def load_batches(batch_indices, max_samples=None):
-        parts_by_species = {}
-        total_loaded = 0
-        
-        # First pass: load all data and count by species
-        for idx in batch_indices:
-            df = pd.read_parquet(batch_files[idx])
-            data = df.values.T.astype(np.float32)  # [samples, genes]
-            
-            if sample_to_species:
-                # Separate by species
-                sample_ids = df.columns.tolist()
-                for i, s in enumerate(sample_ids):
-                    species = sample_to_species.get(s, "unknown")
-                    if species not in parts_by_species:
-                        parts_by_species[species] = []
-                    parts_by_species[species].append(data[i:i+1])
-            else:
-                # No species info, treat as single group
-                if "all" not in parts_by_species:
-                    parts_by_species["all"] = []
-                parts_by_species["all"].append(data)
-            
-            total_loaded += data.shape[0]
-        
-        # Second pass: apply subsampling/balancing
-        result_parts = []
-        
-        if balanced_sampling and len(parts_by_species) > 1:
-            # Determine per-species limit
-            if max_samples:
-                per_species = max_samples // len(parts_by_species)
-            else:
-                # Use min species count (balance naturally across all data)
-                species_counts = [np.vstack(parts).shape[0] for parts in parts_by_species.values()]
-                per_species = min(species_counts)
-            
-            if verbose:
-                species_counts = {sp: np.vstack(parts).shape[0] for sp, parts in parts_by_species.items()}
-                print(f"       Species counts (before balancing): {species_counts}")
-                print(f"       Balanced to {per_species} per species")
-            
-            for species, parts in parts_by_species.items():
-                concatenated = np.vstack(parts)
-                if concatenated.shape[0] > per_species:
-                    indices = rng.choice(concatenated.shape[0], per_species, replace=False)
-                    result_parts.append(concatenated[indices])
-                else:
-                    result_parts.append(concatenated)
-        
+    # Separate by species
+    samples_by_species = {}
+    for batch_idx, sample_idx, species in all_samples:
+        if species not in samples_by_species:
+            samples_by_species[species] = []
+        samples_by_species[species].append((batch_idx, sample_idx))
+    
+    if verbose:
+        for sp, samples in samples_by_species.items():
+            print(f"       {sp}: {len(samples):,} samples", flush=True)
+    
+    # Apply balanced sampling and subsetting
+    if balanced_sampling and len(samples_by_species) > 1:
+        # Determine total requested before split.
+        requested_total = None
+        if train_subset is not None and val_subset is not None:
+            requested_total = train_subset + val_subset
+        elif train_subset is not None:
+            requested_total = train_subset
+
+        # Determine per-species limit.
+        if requested_total is not None:
+            per_species = requested_total // len(samples_by_species)
         else:
-            # No balancing, just subsample if needed
-            all_data = np.vstack([np.vstack(parts) for parts in parts_by_species.values()])
-            if max_samples and all_data.shape[0] > max_samples:
-                indices = rng.choice(all_data.shape[0], max_samples, replace=False)
-                result_parts.append(all_data[indices])
-            else:
-                result_parts.append(all_data)
+            # Use max fully balanced pool based on minority species.
+            per_species = min(len(samples) for samples in samples_by_species.values())
         
-        return np.vstack(result_parts) if result_parts else np.array([])
+        if verbose:
+            print(f"       Balanced to {per_species:,} per species", flush=True)
+        
+        all_samples_balanced = []
+        for species, samples in samples_by_species.items():
+            if len(samples) > per_species:
+                selected = rng.choice(len(samples), per_species, replace=False)
+                all_samples_balanced.extend([samples[i] for i in selected])
+            else:
+                all_samples_balanced.extend(samples)
+        all_samples = all_samples_balanced
     
-    X_train = load_batches(train_indices, max_samples=subset)
-    X_val = load_batches(val_indices, max_samples=subset)
+    elif train_subset is not None:
+        # No species balancing, just subsample
+        if val_subset is not None:
+            requested_total = train_subset + val_subset
+        else:
+            requested_total = train_subset
+        requested_total = min(requested_total, len(all_samples))
+        selected = rng.choice(len(all_samples), requested_total, replace=False)
+        all_samples = [all_samples[i] for i in selected]
+
+    # Final shuffled pool from which we take exact train/val counts.
+    indices = np.arange(len(all_samples))
+    rng.shuffle(indices)
+    shuffled = [all_samples[i] for i in indices]
+
+    if train_subset is None:
+        # Backward-compatible default when no explicit train size is provided.
+        train_count = int(0.8 * len(shuffled))
+    else:
+        train_count = min(train_subset, len(shuffled))
+
+    remaining = max(0, len(shuffled) - train_count)
+    if val_subset is None:
+        val_count = remaining
+    else:
+        val_count = min(val_subset, remaining)
+
+    train_indices = shuffled[:train_count]
+    val_indices = shuffled[train_count:train_count + val_count]
     
     if verbose:
-        print(f"       Final: train {X_train.shape}, val {X_val.shape}")
+        print(f"       Train: {len(train_indices):,} samples", flush=True)
+        print(f"       Val:   {len(val_indices):,} samples", flush=True)
     
-    return X_train, X_val
+    return train_indices, val_indices
 
 
-def apply_input_normalization(x: np.ndarray, normalization: str) -> np.ndarray:
-    """Apply input normalization mode expected by the model."""
-    if normalization == 'tpm':
-        return x.astype(np.float32, copy=False)
+def load_batch_data(batch_dir, sample_indices, normalization='tpm', verbose=True):
+    """
+    Load selected samples from batch parquet files into a single numpy array.
+    
+    Args:
+        batch_dir: Path to directory with batch parquet files
+        sample_indices: List of (batch_idx, sample_idx_in_batch) tuples
+        normalization: 'tpm' or 'log1p_tpm'
+        verbose: Print progress
+    
+    Returns:
+        numpy array of shape [num_samples, num_genes]
+    """
+    batch_dir = Path(batch_dir)
+    batch_files = sorted(batch_dir.glob("*.parquet"))
+    
+    # Group samples by batch file for efficient loading
+    from collections import defaultdict
+    batch_to_samples = defaultdict(list)
+    for idx, (batch_idx, sample_in_batch) in enumerate(sample_indices):
+        batch_to_samples[batch_idx].append((idx, sample_in_batch))
+    
+    # Pre-allocate output array (sample-major parquet: [samples, genes]).
+    first_df = pd.read_parquet(batch_files[0])
+    num_genes = first_df.shape[1]
+    result = np.empty((len(sample_indices), num_genes), dtype=np.float32)
+    
+    # Load batch-by-batch and gather selected sample rows.
+    total_batches = len(batch_to_samples)
+    for i, (batch_idx, idx_pairs) in enumerate(batch_to_samples.items(), start=1):
+        df = pd.read_parquet(batch_files[batch_idx])
+        for out_idx, sample_in_batch in idx_pairs:
+            result[out_idx] = df.iloc[sample_in_batch].to_numpy(dtype=np.float32, copy=False)
+
+        if verbose and (i % 25 == 0 or i == total_batches):
+            print(f"  ...loaded {i}/{total_batches} batch files", flush=True)
+    
+    # Apply normalization
     if normalization == 'log1p_tpm':
-        # Clamp negatives to 0 before log1p for numerical stability.
-        return np.log1p(np.maximum(x, 0.0)).astype(np.float32, copy=False)
-    raise ValueError(f"Unknown normalization: {normalization!r}")
+        result = np.log1p(np.maximum(result, 0.0)).astype(np.float32)
+    
+    if verbose:
+        print(f"  ✓ Loaded {result.shape[0]:,} samples × {result.shape[1]:,} genes")
+    
+    return result
+
+
+def get_num_genes_from_batches(batch_dir):
+    """Infer number of genes from sample-major batch parquet shape."""
+    batch_files = sorted(Path(batch_dir).glob("*.parquet"))
+    if not batch_files:
+        raise FileNotFoundError(f"No parquet files found in {batch_dir}")
+    first_df = pd.read_parquet(batch_files[0])
+    return first_df.shape[1]
 
 
 def format_float_for_tag(v: float) -> str:
@@ -395,6 +545,7 @@ def build_run_tag(cfg: dict) -> str:
 # TRAINING (DDP)
 # ============================================================
 def main():
+    print("\n[STARTUP] train.py started - initializing DDP...", flush=True)
     script_start = time.time()
 
     # Initialize DDP
@@ -408,7 +559,7 @@ def main():
 
     if is_main:
         print("\n" + "=" * 70)
-        print(f"ExpressionPerformer Training — DDP ({world_size} GPUs)")
+        print(f"ExpressionPerformer Training — DDP ({world_size} processes)")
         print("=" * 70)
         print(f"\n[SETUP] Rank: {rank}, Device: {device}")
 
@@ -437,54 +588,82 @@ def main():
     # LOAD DATA
     # ─────────────────────────────────────────────────────────
     data_dir = Path(CONFIG['data_dir'])
-    
-    if is_main:
-        print("\n[DATA] Loading from batch files...")
-    
-    # Check if batch files exist
-    batch_dir = data_dir.parent / "train_orthologs" / "batch_files"
+    batch_dir = data_dir / "batch_files"
     if not batch_dir.exists():
-        # Fallback to merged expression.parquet
-        batch_dir = data_dir.parent / "train_orthologs"
-    
-    if (batch_dir / "batch_files").exists():
-        batch_dir = batch_dir / "batch_files"
-    
+        batch_dir = data_dir
+
+    if is_main:
+        print("\n[DATA] Building sample indices...", flush=True)
+
     t0 = time.time()
-    X_train, X_val = load_from_batch_files(
-        batch_dir,
-        train_frac=0.8,
-        subset=CONFIG.get('train_subset', None),
-        balanced_sampling=CONFIG.get('balanced_sampling', True),
-        seed=CONFIG['seed'],
-        verbose=is_main,
-    )
-    num_samples, num_genes = X_train.shape
+    train_indices = None
+    val_indices = None
     if is_main:
-        print(f"  ✓ Time: {time.time()-t0:.1f}s")
-    
-    # Apply selected normalization before sending values into REE/model.
-    X_train = apply_input_normalization(X_train, CONFIG['normalization'])
-    X_val = apply_input_normalization(X_val, CONFIG['normalization'])
-    if is_main:
-        print(
-            f"[DATA] Input normalization='{CONFIG['normalization']}' | "
-            f"train range=({X_train.min():.4f}, {X_train.max():.4f}) | "
-            f"val range=({X_val.min():.4f}, {X_val.max():.4f})"
+        train_indices, val_indices = get_sample_indices(
+            batch_dir,
+            train_subset=CONFIG.get('train_subset', None),
+            val_subset=CONFIG.get('val_subset', None),
+            balanced_sampling=CONFIG.get('balanced_sampling', True),
+            seed=CONFIG['seed'],
+            verbose=True,
         )
 
-    # Sanity checks
+    train_indices_list = [train_indices if is_main else None]
+    val_indices_list = [val_indices if is_main else None]
+    dist.broadcast_object_list(train_indices_list, src=0)
+    dist.broadcast_object_list(val_indices_list, src=0)
+    train_indices = train_indices_list[0]
+    val_indices = val_indices_list[0]
     if is_main:
-        print(f"\n[CHECK] num_genes={num_genes}, "
-              f"train_samples={X_train.shape[0]}, val_samples={X_val.shape[0]}")
+        print(f"  ✓ Index time: {time.time()-t0:.1f}s", flush=True)
+
+    data_mode = CONFIG.get('data_mode', 'preload')
+    if data_mode == 'streaming':
+        if is_main:
+            print("\n[DATA] Using streaming mode (on-the-fly parquet reads)", flush=True)
+
+        train_ds = StreamingParquetMLMDataset(
+            batch_dir,
+            train_indices,
+            normalization=CONFIG['normalization'],
+            mask_ratio=CONFIG['mask_ratio'],
+            mask_token=CONFIG['mask_token'],
+            cache_size=CONFIG.get('stream_cache_size', 2),
+        )
+        val_ds = StreamingParquetMLMDataset(
+            batch_dir,
+            val_indices,
+            normalization=CONFIG['normalization'],
+            mask_ratio=CONFIG['mask_ratio'],
+            mask_token=CONFIG['mask_token'],
+            cache_size=CONFIG.get('stream_cache_size', 2),
+        )
+        num_genes = get_num_genes_from_batches(batch_dir)
+    else:
+        if is_main:
+            print("\n[DATA] Loading training data into memory...", flush=True)
+        X_train = load_batch_data(batch_dir, train_indices,
+                                  normalization=CONFIG['normalization'],
+                                  verbose=is_main)
+        if is_main:
+            print("[DATA] Loading validation data into memory...", flush=True)
+        X_val = load_batch_data(batch_dir, val_indices,
+                                normalization=CONFIG['normalization'],
+                                verbose=is_main)
+
+        num_genes = X_train.shape[1]
+
+        # Data stored fully in host memory; faster per-step but higher RAM.
+        train_ds = ExpressionMLMDataset(X_train, CONFIG['mask_ratio'], CONFIG['mask_token'])
+        val_ds = ExpressionMLMDataset(X_val, CONFIG['mask_ratio'], CONFIG['mask_token'])
+
+    if is_main:
+        print(f"\n[CHECK] num_genes={num_genes}")
         assert num_genes > 10000, f"Expected ~16K genes, got {num_genes}"
 
     # ─────────────────────────────────────────────────────────
     # DATASETS & DATALOADERS
     # ─────────────────────────────────────────────────────────
-    train_ds = ExpressionMLMDataset(X_train, CONFIG['mask_ratio'], CONFIG['mask_token'])
-    val_ds = ExpressionMLMDataset(X_val, CONFIG['mask_ratio'], CONFIG['mask_token'])
-
     train_sampler = DistributedSampler(train_ds, num_replicas=world_size,
                                         rank=rank, shuffle=True, seed=42)
     val_sampler = DistributedSampler(val_ds, num_replicas=world_size,
@@ -500,6 +679,9 @@ def main():
     if is_main:
         print(f"\n[DATA] Train: {len(train_ds):,} samples, {len(train_loader)} batches")
         print(f"[DATA] Val:   {len(val_ds):,} samples, {len(val_loader)} batches")
+
+    # Synchronize after data loading
+    dist.barrier()
 
     # ─────────────────────────────────────────────────────────
     # MODEL
@@ -541,9 +723,9 @@ def main():
     # TRAINING LOOP
     # ─────────────────────────────────────────────────────────
     if is_main:
-        print("\n" + "=" * 70)
-        print("[TRAIN] Starting training...")
-        print("=" * 70 + "\n")
+        print("\n" + "=" * 70, flush=True)
+        print("[TRAIN] Starting training...", flush=True)
+        print("=" * 70 + "\n", flush=True)
 
     best_val_loss = float('inf')
     patience_counter = 0
@@ -589,13 +771,13 @@ def main():
             'num_layers': CONFIG['num_layers'],
         },
         'dataset': {
-            'train_samples': int(X_train.shape[0]),
-            'val_samples': int(X_val.shape[0]),
+            'train_samples': len(train_ds),
+            'val_samples': len(val_ds),
             'num_genes': int(num_genes),
-            'train_used_counts': train_used_counts,
-            'val_used_counts': val_used_counts,
-            'train_raw_counts': train_raw_counts,
-            'val_raw_counts': val_raw_counts,
+            'train_used_counts': None,  # Not computed for lazy-loaded data
+            'val_used_counts': None,
+            'train_raw_counts': None,
+            'val_raw_counts': None,
             'balanced_sampling': CONFIG['balanced_sampling'],
             'train_subset': CONFIG['train_subset'],
             'val_subset': CONFIG['val_subset'],
@@ -797,8 +979,22 @@ def main():
     if is_main and HAS_WANDB:
         wandb.finish()
 
+    # Ensure all ranks finish before cleanup
+    dist.barrier()
     dist.destroy_process_group()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"\n[ERROR] Exception in train.py: {e}", flush=True, file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        # Try to cleanup DDP even on error
+        try:
+            if dist.is_available() and dist.is_initialized():
+                dist.destroy_process_group()
+        except:
+            pass
+        sys.exit(1)

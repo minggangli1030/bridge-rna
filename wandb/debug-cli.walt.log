@@ -1090,3 +1090,297 @@ requests.exceptions.HTTPError: 500 Server Error: Internal Server Error for url: 
 2026-03-17 20:32:53 INFO Cleaning up finished run: nshqyw42
 2026-03-17 20:32:54 INFO Agent received command: exit
 2026-03-17 20:32:54 INFO Received exit command. Killing runs and quitting.
+2026-03-18 20:50:53 INFO Running runs: []
+2026-03-18 20:50:54 INFO Agent received command: run
+2026-03-18 20:50:54 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 20:50:54 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 20:50:59 INFO Running runs: ['3a11nxkf']
+2026-03-18 20:57:14 INFO Running runs: []
+2026-03-18 20:57:15 INFO Agent received command: run
+2026-03-18 20:57:15 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 20:57:15 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 20:57:20 INFO Running runs: ['9i72frii']
+2026-03-18 21:02:54 INFO Running runs: []
+2026-03-18 21:02:54 INFO Agent received command: run
+2026-03-18 21:02:54 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:02:54 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:02:59 INFO Running runs: ['d4efhy6z']
+2026-03-18 21:03:30 INFO Cleaning up finished run: d4efhy6z
+2026-03-18 21:03:31 INFO Agent received command: run
+2026-03-18 21:03:31 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:03:31 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:03:36 INFO Running runs: ['tcdke84g']
+2026-03-18 21:04:07 INFO Cleaning up finished run: tcdke84g
+2026-03-18 21:04:08 INFO Agent received command: run
+2026-03-18 21:04:08 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 768
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:04:08 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:04:13 INFO Running runs: ['fm4s25ad']
+2026-03-18 21:04:45 INFO Cleaning up finished run: fm4s25ad
+2026-03-18 21:04:45 INFO Agent received command: run
+2026-03-18 21:04:45 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 768
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:04:45 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:04:50 INFO Running runs: ['e06mrh4q']
+2026-03-18 21:05:21 INFO Cleaning up finished run: e06mrh4q
+2026-03-18 21:05:22 INFO Agent received command: run
+2026-03-18 21:05:22 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 768
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:05:22 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:05:27 INFO Running runs: ['2zid8u42']
+2026-03-18 21:05:58 INFO Cleaning up finished run: 2zid8u42
+2026-03-18 21:05:59 INFO Agent received command: run
+2026-03-18 21:05:59 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 768
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:05:59 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:06:04 INFO Running runs: ['5yh62swj']
+2026-03-18 21:06:35 INFO Cleaning up finished run: 5yh62swj
+2026-03-18 21:06:35 INFO Agent received command: exit
+2026-03-18 21:06:35 INFO Received exit command. Killing runs and quitting.
+2026-03-18 21:16:06 ERROR Error executing GraphQL.
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+2026-03-18 21:16:06 ERROR Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/retry.py", line 160, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/cli/cli.py", line 150, in wrapper
+    return func(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/cli/cli.py", line 1766, in agent
+    wandb_agent.agent(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/wandb_agent.py", line 669, in agent
+    return run_agent(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/wandb_agent.py", line 622, in run_agent
+    agent.run()
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/wandb_agent.py", line 288, in run
+    agent = self._api.register_agent(socket.gethostname(), sweep_id=self._sweep_id)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/apis/internal.py", line 149, in register_agent
+    return self.api.register_agent(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/apis/normalize.py", line 28, in wrapper
+    return func(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 3111, in register_agent
+    response = self.gql(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 364, in gql
+    ret = self._retry_gql(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/retry.py", line 163, in __call__
+    if not retry_loop.should_retry(e):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/retry.py", line 280, in should_retry
+    retry_check_result = self._retry_check(exception)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/util.py", line 902, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.errors.UsageError: Sweep walt_/Attention/pih1fm2l is not running
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/retry.py", line 160, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/cli/cli.py", line 150, in wrapper
+    return func(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/cli/cli.py", line 1766, in agent
+    wandb_agent.agent(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/wandb_agent.py", line 669, in agent
+    return run_agent(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/wandb_agent.py", line 622, in run_agent
+    agent.run()
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/wandb_agent.py", line 288, in run
+    agent = self._api.register_agent(socket.gethostname(), sweep_id=self._sweep_id)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/apis/internal.py", line 149, in register_agent
+    return self.api.register_agent(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/apis/normalize.py", line 28, in wrapper
+    return func(*args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 3111, in register_agent
+    response = self.gql(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 364, in gql
+    ret = self._retry_gql(
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/retry.py", line 163, in __call__
+    if not retry_loop.should_retry(e):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/retry.py", line 280, in should_retry
+    retry_check_result = self._retry_check(exception)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/util.py", line 902, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.errors.UsageError: Sweep walt_/Attention/pih1fm2l is not running
+2026-03-18 21:16:32 INFO Running runs: []
+2026-03-18 21:16:33 INFO Agent received command: run
+2026-03-18 21:16:33 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:16:33 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:16:38 INFO Running runs: ['cwgbnf86']
+2026-03-18 21:36:08 INFO Running runs: []
+2026-03-18 21:36:09 INFO Agent received command: run
+2026-03-18 21:36:09 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:36:09 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:36:14 INFO Running runs: ['ooine25b']
+2026-03-18 21:39:38 INFO Running runs: []
+2026-03-18 21:39:39 INFO Agent received command: run
+2026-03-18 21:39:39 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:39:39 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:39:44 INFO Running runs: ['p8h33atp']
+2026-03-18 21:43:07 INFO Running runs: []
+2026-03-18 21:43:08 INFO Agent received command: run
+2026-03-18 21:43:08 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-18 21:43:08 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-18 21:43:13 INFO Running runs: ['h2fm5t0q']
