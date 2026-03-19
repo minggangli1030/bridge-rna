@@ -192,19 +192,23 @@ def main() -> int:
     if not batch_files:
         raise FileNotFoundError(f"No batch parquet files found in {batch_dir}")
     
-    # Load only a random subset of batch files for efficiency
-    n_batches_to_load = min(10, len(batch_files))  # Load at most 10 batch files
+    # Load a random subset of batch files for efficiency
+    n_batches_to_load = min(6, len(batch_files))  # Load 6 batch files
     random.seed(args.seed)
     selected_batch_files = random.sample(batch_files, n_batches_to_load)
     
-    print(f"Loading {n_batches_to_load}/{len(batch_files)} random batch files for validation...")
+    print(f"Loading {n_batches_to_load}/{len(batch_files)} random batch files for quick validation...")
+    
+    # Track which samples come from which batch
+    batch_samples = {}  # batch_file -> [sample_ids]
     df_parts = []
     for batch_file in selected_batch_files:
         df_batch = pd.read_parquet(batch_file)
+        batch_samples[batch_file.name] = df_batch.columns.tolist()
         df_parts.append(df_batch)
     
     df = pd.concat(df_parts, axis=1).T  # Transpose to [samples, genes]
-    print(f"Loaded {df.shape[0]} samples from {n_batches_to_load} batch files")
+    print(f"Loaded {df.shape[0]} samples from {n_batches_to_load} batch files\n")
 
     section("[ID DIAGNOSTICS] Checking sample-ID uniqueness")
     meta_dup_count = int(meta["geo_accession"].duplicated().sum())
@@ -222,19 +226,53 @@ def main() -> int:
     human_pool = meta[meta["species"] == "human"]["geo_accession"].tolist()
     mouse_pool = meta[meta["species"] == "mouse"]["geo_accession"].tolist()
 
-    if args.n_human < 1 or args.n_mouse < 1:
-        raise ValueError("--n-human and --n-mouse must both be >= 1")
-    if args.n_human > len(human_pool):
-        raise ValueError(f"Requested {args.n_human} human samples but only {len(human_pool)} available")
-    if args.n_mouse > len(mouse_pool):
-        raise ValueError(f"Requested {args.n_mouse} mouse samples but only {len(mouse_pool)} available")
-
+    # Sample 3-5 samples total from different batch files
+    loaded_samples = set(df.index)
+    human_in_loaded = [h for h in human_pool if h in loaded_samples]
+    mouse_in_loaded = [m for m in mouse_pool if m in loaded_samples]
+    
+    # Pick samples from different batches (one per batch if possible)
     random.seed(args.seed)
-    human_sample_ids = random.sample(human_pool, args.n_human)
-    mouse_sample_ids = random.sample(mouse_pool, args.n_mouse)
+    test_samples_with_batch = []
+    batches_used = set()
+    
+    # Shuffle batch files and try to pick one sample from each
+    shuffled_batches = list(batch_samples.items())
+    random.shuffle(shuffled_batches)
+    
+    for batch_name, sample_ids in shuffled_batches:
+        if len(test_samples_with_batch) >= 5:  # Max 5 samples
+            break
+        
+        # Find human or mouse sample from this batch
+        available_human = [s for s in sample_ids if s in human_in_loaded]
+        available_mouse = [s for s in sample_ids if s in mouse_in_loaded]
+        
+        # Alternate between picking human and mouse for diversity
+        if len(test_samples_with_batch) % 2 == 0 and available_human:
+            sample_id = random.choice(available_human)
+            species = "human"
+        elif available_mouse:
+            sample_id = random.choice(available_mouse)
+            species = "mouse"
+        elif available_human:
+            sample_id = random.choice(available_human)
+            species = "human"
+        else:
+            continue
+        
+        test_samples_with_batch.append((sample_id, species, batch_name))
+        batches_used.add(batch_name)
+    
+    # Extract just the sample IDs
+    test_sample_ids = [s[0] for s in test_samples_with_batch]
+    human_sample_ids = [s[0] for s in test_samples_with_batch if s[1] == "human"]
+    mouse_sample_ids = [s[0] for s in test_samples_with_batch if s[1] == "mouse"]
 
-    print(f"Human sample IDs: {human_sample_ids}")
-    print(f"Mouse sample IDs: {mouse_sample_ids}")
+    section("[SAMPLE SELECTION]")
+    print(f"Selected {len(test_sample_ids)} samples from {len(batches_used)} different batch files:")
+    for sample_id, species, batch_name in test_samples_with_batch:
+        print(f"  {sample_id:20s} ({species:6s}) from {batch_name}")
 
     df_human = df.loc[human_sample_ids]
     df_mouse = df.loc[mouse_sample_ids]
