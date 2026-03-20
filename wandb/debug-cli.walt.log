@@ -1384,3 +1384,135 @@ wandb.errors.errors.UsageError: Sweep walt_/Attention/pih1fm2l is not running
 	weight_decay: 0
 2026-03-18 21:43:08 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
 2026-03-18 21:43:13 INFO Running runs: ['h2fm5t0q']
+2026-03-19 07:48:59 INFO Running runs: []
+2026-03-19 07:49:00 INFO Agent received command: run
+2026-03-19 07:49:00 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-19 07:49:00 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-19 07:49:05 INFO Running runs: ['p33e4v8j']
+2026-03-19 08:12:55 INFO Running runs: []
+2026-03-19 08:12:56 INFO Agent received command: run
+2026-03-19 08:12:56 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-19 08:12:56 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-19 08:13:01 INFO Running runs: ['va7m80y7']
+2026-03-19 08:15:10 INFO Running runs: []
+2026-03-19 08:15:11 INFO Agent received command: run
+2026-03-19 08:15:11 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-19 08:15:11 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-19 08:15:16 INFO Running runs: ['urzeoqzn']
+2026-03-19 08:18:28 INFO Running runs: []
+2026-03-19 08:18:29 INFO Agent received command: run
+2026-03-19 08:18:29 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 4
+	ree_base: 100
+	weight_decay: 0
+2026-03-19 08:18:29 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-19 08:18:34 INFO Running runs: ['20jo1hdd']
+2026-03-19 10:50:10 ERROR Error executing GraphQL.
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://api.wandb.ai/graphql
+2026-03-19 14:37:56 ERROR Error executing GraphQL.
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://api.wandb.ai/graphql
+2026-03-19 15:20:09 ERROR Error executing GraphQL.
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://api.wandb.ai/graphql
+2026-03-19 22:11:52 ERROR Error executing GraphQL.
+Traceback (most recent call last):
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/internal/internal_api.py", line 394, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/walt/.local/lib/python3.10/site-packages/wandb/sdk/lib/gql_request.py", line 71, in execute
+    request.raise_for_status()
+  File "/home/walt/.local/lib/python3.10/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://api.wandb.ai/graphql
+2026-03-20 01:34:35 INFO Cleaning up finished run: 20jo1hdd
+2026-03-20 01:34:36 INFO Agent received command: run
+2026-03-20 01:34:36 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 768
+	learning_rate: 0.0001
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-20 01:34:36 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-20 01:34:41 INFO Running runs: ['noglb7pp']

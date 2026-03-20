@@ -94,7 +94,8 @@ CONFIG = {
     'seed': 42,
     # Data loading mode: 'preload' (load arrays into RAM) or 'streaming' (on-the-fly parquet reads)
     'data_mode': 'streaming',
-    'stream_cache_size': 2,
+    'stream_cache_size': 8,
+    'num_workers': 4,
     # Data subset sizes (set to None for all available)
     'train_subset': 20000,
     'val_subset': 4000,
@@ -670,10 +671,12 @@ def main():
                                       rank=rank, shuffle=False, seed=42)
 
     train_loader = DataLoader(train_ds, batch_size=CONFIG['batch_size'],
-                              sampler=train_sampler, num_workers=0,
+                              sampler=train_sampler,
+                              num_workers=int(CONFIG.get('num_workers', 2)),
                               pin_memory=True)
     val_loader = DataLoader(val_ds, batch_size=CONFIG['batch_size'],
-                            sampler=val_sampler, num_workers=0,
+                            sampler=val_sampler,
+                            num_workers=int(CONFIG.get('num_workers', 2)),
                             pin_memory=True)
 
     if is_main:

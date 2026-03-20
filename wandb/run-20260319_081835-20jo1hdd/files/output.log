@@ -1,0 +1,111 @@
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'hidden_dim' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'num_heads' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'num_layers' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'ree_base' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'normalization' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'mask_ratio' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'learning_rate' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'weight_decay' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'batch_size' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'epochs' was locked by 'sweep' (ignored update).
+[34m[1mwandb[0m: [33mWARNING[0m Config item 'early_stopping' was locked by 'sweep' (ignored update).
+
+[DATA] Building sample indices...
+[DEBUG] Found 189 batch files
+[DATA] Total samples available: 940,455
+       human: 510,709 samples
+       mouse: 429,746 samples
+       Balanced to 12,000 per species
+       Train: 20,000 samples
+       Val:   4,000 samples
+  ✓ Index time: 1.7s
+
+[DATA] Using streaming mode (on-the-fly parquet reads)
+
+[CHECK] num_genes=15165
+
+[DATA] Train: 20,000 samples, 2500 batches
+[DATA] Val:   4,000 samples, 500 batches
+/home/walt/.local/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4876: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  warnings.warn(  # warn only once
+
+[MODEL] Building ExpressionPerformer...
+  ✓ Parameters: 19,323,905
+  ✓ AdamW (lr=0.0002)
+
+======================================================================
+[TRAIN] Starting training...
+======================================================================
+
+  Epoch 1/5 | Batch 625/2500 | Loss: 1.211445 | Avg: 3.954940
+  Epoch 1/5 | Batch 1250/2500 | Loss: 1.194281 | Avg: 2.545191
+  Epoch 1/5 | Batch 1875/2500 | Loss: 1.072156 | Avg: 2.074707
+  Epoch 1/5 | Batch 2500/2500 | Loss: 1.191251 | Avg: 1.836844
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 1/5
+  ║ Train Loss: 1.836844
+  ║ Val Loss:   1.107169
+  ║ Time: 12240.3s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 2/5 | Batch 625/2500 | Loss: 1.132289 | Avg: 1.103361
+  Epoch 2/5 | Batch 1250/2500 | Loss: 0.936921 | Avg: 1.099153
+  Epoch 2/5 | Batch 1875/2500 | Loss: 1.176363 | Avg: 1.084636
+  Epoch 2/5 | Batch 2500/2500 | Loss: 1.004959 | Avg: 1.054443
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 2/5
+  ║ Train Loss: 1.054443
+  ║ Val Loss:   0.935057
+  ║ Time: 12364.5s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 3/5 | Batch 625/2500 | Loss: 0.802773 | Avg: 0.896763
+  Epoch 3/5 | Batch 1250/2500 | Loss: 0.835411 | Avg: 0.872269
+  Epoch 3/5 | Batch 1875/2500 | Loss: 0.872165 | Avg: 0.851589
+  Epoch 3/5 | Batch 2500/2500 | Loss: 0.498169 | Avg: 0.830914
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 3/5
+  ║ Train Loss: 0.830914
+  ║ Val Loss:   0.747754
+  ║ Time: 12891.7s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 4/5 | Batch 625/2500 | Loss: 0.553918 | Avg: 0.725250
+  Epoch 4/5 | Batch 1250/2500 | Loss: 0.970976 | Avg: 0.721194
+  Epoch 4/5 | Batch 1875/2500 | Loss: 0.637370 | Avg: 0.709006
+  Epoch 4/5 | Batch 2500/2500 | Loss: 0.529961 | Avg: 0.699624
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 4/5
+  ║ Train Loss: 0.699624
+  ║ Val Loss:   0.658138
+  ║ Time: 12239.6s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+  Epoch 5/5 | Batch 625/2500 | Loss: 0.637946 | Avg: 0.640064
+  Epoch 5/5 | Batch 1250/2500 | Loss: 0.483378 | Avg: 0.637324
+  Epoch 5/5 | Batch 1875/2500 | Loss: 0.545878 | Avg: 0.638003
+  Epoch 5/5 | Batch 2500/2500 | Loss: 0.650409 | Avg: 0.631737
+
+  ╔════════════════════════════════════════════╗
+  ║ Epoch 5/5
+  ║ Train Loss: 0.631737
+  ║ Val Loss:   0.610748
+  ║ Time: 12371.7s
+  ║ ✓ New best (run)! Saved best_model.pt
+  ╚════════════════════════════════════════════╝
+
+======================================================================
+Training complete! 62127s (1035.5m)
+  Run best val loss:    0.610748
+  Global best val loss: 0.000000
+  Run checkpoints:      checkpoints_performer/20jo1hdd/
+  Global best model:    checkpoints_performer/best_model.pt
+======================================================================
