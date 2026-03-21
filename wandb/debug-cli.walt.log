@@ -1516,3 +1516,19 @@ requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://ap
 	weight_decay: 0
 2026-03-20 01:34:36 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
 2026-03-20 01:34:41 INFO Running runs: ['noglb7pp']
+2026-03-20 05:26:37 INFO Running runs: []
+2026-03-20 05:26:38 INFO Agent received command: run
+2026-03-20 05:26:38 INFO Agent starting run with config:
+	batch_size: 4
+	early_stopping: False
+	epochs: 5
+	hidden_dim: 512
+	learning_rate: 0.0002
+	mask_ratio: 0.15
+	normalization: log1p_tpm
+	num_heads: 8
+	num_layers: 2
+	ree_base: 100
+	weight_decay: 0
+2026-03-20 05:26:38 INFO About to run command: /usr/bin/env /home/walt/Attention/sweep_train.sh
+2026-03-20 05:26:43 INFO Running runs: ['39mwghyb']
