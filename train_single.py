@@ -525,7 +525,7 @@ def _init_ddp():
 	local_rank = int(os.environ.get("LOCAL_RANK", 0))
 	torch.cuda.set_device(local_rank)
 	try:
-		dist.init_process_group(backend="nccl", device_id=local_rank)
+		dist.init_process_group(backend="nccl", device_id=torch.device(f"cuda:{local_rank}"))
 	except TypeError:
 		dist.init_process_group(backend="nccl")
 	rank = dist.get_rank()
