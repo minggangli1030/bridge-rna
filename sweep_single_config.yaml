@@ -1,34 +1,49 @@
-program: /home/walt/Attention/sweep_train_single.sh
+program: /global/scratch/users/minggangli/bridge-rna/sweep_train_single.sh
 command:
   - ${env}
   - ${program}
-method: grid
-run_cap: 1
+method: bayes
 metric:
   name: val_loss
   goal: minimize
 
 parameters:
+  # Architecture
   hidden_dim:
-    values: [512]
-  # ffn_dim is auto-computed as hidden_dim * 4 in train_single.py
-  num_heads:
-    values: [8]
+    values: [384, 512, 768]
   num_layers:
-    values: [2]
+    values: [2, 4, 8]
+  num_heads:
+    values: [8]          # keep fixed; must divide hidden_dim evenly
+
+  # Training
   learning_rate:
-    values: [2e-4]
+    distribution: log_uniform_values
+    min: 1e-4
+    max: 4e-4
   batch_size:
-    values: [4]
+    values: [4, 8]
+  weight_decay:
+    values: [0.0, 0.01]
+
+  # Masking
+  mask_ratio:
+    values: [0.10, 0.15, 0.20]
+
+  # REE positional encoding
+  ree_base:
+    values: [50.0, 100.0, 200.0]
+
+  # Fixed — don't sweep these
   epochs:
-    values: [5]
+    values: [10]
   normalization:
     values: ["log1p_tpm"]
-  ree_base:
-    values: [100.0]
-  weight_decay:
-    values: [0.0]
-  mask_ratio:
-    values: [0.15]
   early_stopping:
     values: [false]
+  data_mode:
+    values: ["streaming"]
+  train_subset:
+    values: [20000]
+  val_subset:
+    values: [4000]
