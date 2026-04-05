@@ -73,12 +73,12 @@ CONFIG = {
 	"learning_rate": 2e-4,
 	"weight_decay": 0,
 	"batch_size": 4,
-	"epochs": 5,
+	"epochs": 30,
 	"early_stopping": True,
 	"patience": 5,
 	"seed": 42,
 	# Streaming defaults chosen for stability on large single parquet files.
-	"data_mode": "preload",
+	"data_mode": "streaming",
 	"stream_cache_size": 2,
 	"num_workers": 1,
 	"prefetch_factor": 2,
@@ -169,15 +169,10 @@ class SingleParquetStreamingMLMDataset(Dataset):
 
 		pf = pq.ParquetFile(str(self.parquet_path))
 		cols = pf.schema_arrow.names
-		self.idx_col = "geo_accession" if "geo_accession" in cols else (
-			"__index_level_0__" if "__index_level_0__" in cols else None
-		)
-		if self.idx_col is None:
-			raise ValueError(
-				"Parquet is missing sample index column. Expected geo_accession or __index_level_0__."
-			)
+		self.idx_col = next((c for c in ("geo_accession", "__index_level_0__", "sample_id") if c in cols), None)
+		# idx_col is None means all columns are gene columns (no explicit sample ID)
 
-		self.gene_cols = [c for c in cols if c not in ("geo_accession", "__index_level_0__")]
+		self.gene_cols = [c for c in cols if c not in ("geo_accession", "__index_level_0__", "sample_id")]
 		self.num_genes = len(self.gene_cols)
 		self.num_mask = max(1, int(self.num_genes * self.mask_ratio))
 
@@ -363,13 +358,11 @@ def _load_sample_species(samples_json_path):
 def _read_parquet_index_ids(parquet_path):
 	pf = pq.ParquetFile(str(parquet_path))
 	cols = pf.schema_arrow.names
-	idx_col = "geo_accession" if "geo_accession" in cols else (
-		"__index_level_0__" if "__index_level_0__" in cols else None
-	)
+	idx_col = next((c for c in ("geo_accession", "__index_level_0__", "sample_id") if c in cols), None)
 	if idx_col is None:
-		raise ValueError(
-			"Parquet is missing sample index column. Expected geo_accession or __index_level_0__."
-		)
+		# No explicit index column — use integer row indices as sample IDs
+		num_rows = pf.metadata.num_rows
+		return [str(i) for i in range(num_rows)]
 	t = pf.read(columns=[idx_col], use_threads=True)
 	return [str(x) for x in t.column(0).to_pylist()]
 
@@ -455,7 +448,7 @@ def build_single_parquet_split(
 
 def get_num_genes_from_single_parquet(parquet_path):
 	pf = pq.ParquetFile(str(parquet_path))
-	cols = [c for c in pf.schema_arrow.names if c not in ("geo_accession", "__index_level_0__")]
+	cols = [c for c in pf.schema_arrow.names if c not in ("geo_accession", "__index_level_0__", "sample_id")]
 	return len(cols)
 
 
@@ -466,7 +459,7 @@ def estimate_matrix_bytes(num_rows, num_genes, dtype_bytes=4):
 def _get_parquet_gene_layout(parquet_path):
 	pf = pq.ParquetFile(str(parquet_path))
 	cols = pf.schema_arrow.names
-	gene_cols = [c for c in cols if c not in ("geo_accession", "__index_level_0__")]
+	gene_cols = [c for c in cols if c not in ("geo_accession", "__index_level_0__", "sample_id")]
 	starts = [0]
 	for rg in range(pf.metadata.num_row_groups):
 		starts.append(starts[-1] + pf.metadata.row_group(rg).num_rows)

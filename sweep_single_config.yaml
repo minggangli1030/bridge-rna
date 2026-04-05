@@ -2,48 +2,49 @@ program: /global/scratch/users/minggangli/bridge-rna/sweep_train_single.sh
 command:
   - ${env}
   - ${program}
-method: bayes
+method: random
+run_cap: 18
 metric:
   name: val_loss
   goal: minimize
 
 parameters:
-  # Architecture
+  # === SWEPT ===
   hidden_dim:
-    values: [384, 512, 768]
+    values: [256, 512]
   num_layers:
     values: [2, 4, 8]
-  num_heads:
-    values: [8]          # keep fixed; must divide hidden_dim evenly
-
-  # Training
-  learning_rate:
-    distribution: log_uniform_values
-    min: 1e-4
-    max: 4e-4
   batch_size:
-    values: [4, 8]
-  weight_decay:
-    values: [0.0, 0.01]
+    values: [4, 8, 16]
+  learning_rate:
+    values: [0.0001, 0.0002, 0.0003]
 
-  # Masking
+  # === FIXED DEFAULTS ===
+  num_heads:
+    values: [8]        # always divides 256 and 512 evenly
   mask_ratio:
-    values: [0.10, 0.15, 0.20]
-
-  # REE positional encoding
+    values: [0.15]
   ree_base:
-    values: [50.0, 100.0, 200.0]
-
-  # Fixed — don't sweep these
-  epochs:
-    values: [10]
+    values: [100.0]
+  weight_decay:
+    values: [0.0]
   normalization:
     values: ["log1p_tpm"]
-  early_stopping:
-    values: [false]
+  feature_type:
+    values: ["sqr"]
+  compute_type:
+    values: ["iter"]
   data_mode:
     values: ["streaming"]
+  epochs:
+    values: [5]
+  early_stopping:
+    values: [true]
+  patience:
+    values: [3]
   train_subset:
-    values: [20000]
+    values: [15000]
   val_subset:
-    values: [4000]
+    values: [3000]
+  seed:
+    values: [42]
