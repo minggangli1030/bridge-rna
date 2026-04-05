@@ -1,4 +1,5 @@
 program: /global/scratch/users/minggangli/bridge-rna/sweep_train_single.sh
+project: Attention
 command:
   - ${env}
   - ${program}
