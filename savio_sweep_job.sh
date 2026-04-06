@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=60G
-#SBATCH --time=12:00:00
+#SBATCH --time=72:00:00
 #SBATCH --output=/global/scratch/users/minggangli/bridge-rna/logs/sweep-%j.out
 #SBATCH --error=/global/scratch/users/minggangli/bridge-rna/logs/sweep-%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
