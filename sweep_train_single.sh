@@ -2,6 +2,10 @@
 # Wrapper for wandb sweep to launch DDP single-parquet training with torchrun
 echo "[SWEEP] Starting single-parquet training with torchrun..." >&2
 
+# Activate the correct conda environment so the right pandas/torch are used
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate bridge-rna
+
 # wandb agent sets CUDA_VISIBLE_DEVICES which breaks torchrun DDP — unset it
 unset CUDA_VISIBLE_DEVICES
 N_GPUS=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
