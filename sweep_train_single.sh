@@ -2,9 +2,8 @@
 # Wrapper for wandb sweep to launch DDP single-parquet training with torchrun
 echo "[SWEEP] Starting single-parquet training with torchrun..." >&2
 
-# Activate the correct conda environment so the right pandas/torch are used
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate bridge-rna
+# Ensure conda env libs take precedence (fixes GLIBCXX version mismatch)
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 # wandb agent sets CUDA_VISIBLE_DEVICES which breaks torchrun DDP — unset it
 unset CUDA_VISIBLE_DEVICES
