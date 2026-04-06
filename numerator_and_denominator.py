@@ -24,6 +24,7 @@ class _NumIter(torch.autograd.Function):
   """Custom gradient for numerator computation in prefix sum."""
 
   @staticmethod
+  @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
   def forward(ctx, qs, ks, vs, sums):
     result = []
 
@@ -42,6 +43,7 @@ class _NumIter(torch.autograd.Function):
     return result, sums
 
   @staticmethod
+  @torch.cuda.amp.custom_bwd
   def backward(ctx, res_grad, grads):
     qs, ks, vs, sums = ctx.saved_tensors
 
@@ -91,6 +93,7 @@ class _DenIter(torch.autograd.Function):
   """Custom gradient for denominator computation in prefix sum."""
 
   @staticmethod
+  @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
   def forward(ctx, qs, ks, sums):
     result = []
 
@@ -107,6 +110,7 @@ class _DenIter(torch.autograd.Function):
     return result, sums
 
   @staticmethod
+  @torch.cuda.amp.custom_bwd
   def backward(ctx, res_grad, k_grad):
     qs, ks, sums = ctx.saved_tensors
 

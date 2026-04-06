@@ -737,7 +737,7 @@ def main():
 
 	optimizer = AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=CONFIG["weight_decay"])
 	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=CONFIG["epochs"])
-	scaler = torch.cuda.amp.GradScaler(enabled=CONFIG.get("use_amp", True))
+	scaler = torch.amp.GradScaler("cuda", enabled=CONFIG.get("use_amp", True))
 
 	if is_main:
 		print(f"  + AdamW (lr={CONFIG['learning_rate']})")
@@ -807,7 +807,7 @@ def main():
 			x_masked = x_masked.to(device, non_blocking=True)
 			x_true = x_true.to(device, non_blocking=True)
 
-			with torch.cuda.amp.autocast(enabled=CONFIG.get("use_amp", True)):
+			with torch.amp.autocast("cuda", enabled=CONFIG.get("use_amp", True)):
 				pred = model(x_masked)
 
 				loss_parts = []
@@ -858,7 +858,7 @@ def main():
 				x_masked = x_masked.to(device, non_blocking=True)
 				x_true = x_true.to(device, non_blocking=True)
 
-				with torch.cuda.amp.autocast(enabled=CONFIG.get("use_amp", True)):
+				with torch.amp.autocast("cuda", enabled=CONFIG.get("use_amp", True)):
 					pred = model(x_masked)
 
 				loss_parts = []
