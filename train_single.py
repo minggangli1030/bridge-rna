@@ -35,6 +35,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import AdamW
 from torch.utils.data import BatchSampler, DataLoader, Dataset, DistributedSampler, Sampler
@@ -90,6 +91,9 @@ CONFIG = {
 	"expression_parquet": "./data/archs4/train_orthologs_merged/expression.parquet",
 	"samples_json": "./data/archs4/train_orthologs/samples.json",
 	"checkpoint_dir": "./checkpoints_performer_single",
+	# Memory optimizations
+	"use_amp": True,                   # mixed precision (fp16) — ~2x memory reduction
+	"gradient_checkpointing": True,    # recompute activations during backward — trades compute for memory
 }
 
 
@@ -122,9 +126,11 @@ class ExpressionPerformer(nn.Module):
 		mask_token_id=-10,
 		feature_type="sqr",
 		compute_type="iter",
+		gradient_checkpointing=False,
 	):
 		super().__init__()
 		self.num_genes = num_genes
+		self.gradient_checkpointing = gradient_checkpointing
 		self.gene_embedding = nn.Embedding(num_genes, hidden_dim)
 		self.ree = RotaryExpressionEmbedding(hidden_dim, base=ree_base, mask_token_id=mask_token_id)
 		self.layers = nn.ModuleList(
@@ -144,7 +150,10 @@ class ExpressionPerformer(nn.Module):
 		h = gene_emb.unsqueeze(0) + ree_emb
 		for layer in self.layers:
 			rfs = layer.attention.sample_rfs(device)
-			h = layer.full_forward(h, rfs)
+			if self.gradient_checkpointing and self.training:
+				h = torch.utils.checkpoint.checkpoint(layer.full_forward, h, rfs, use_reentrant=False)
+			else:
+				h = layer.full_forward(h, rfs)
 		return self.output_map(h).squeeze(-1)
 
 
@@ -718,6 +727,7 @@ def main():
 		mask_token_id=CONFIG["mask_token"],
 		feature_type=CONFIG["feature_type"],
 		compute_type=CONFIG["compute_type"],
+		gradient_checkpointing=CONFIG.get("gradient_checkpointing", False),
 	).to(device)
 
 	model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
@@ -727,6 +737,7 @@ def main():
 
 	optimizer = AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=CONFIG["weight_decay"])
 	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=CONFIG["epochs"])
+	scaler = torch.cuda.amp.GradScaler(enabled=CONFIG.get("use_amp", True))
 
 	if is_main:
 		print(f"  + AdamW (lr={CONFIG['learning_rate']})")
@@ -795,19 +806,22 @@ def main():
 		for batch_idx, (x_masked, x_true, mask_idx) in enumerate(train_loader):
 			x_masked = x_masked.to(device, non_blocking=True)
 			x_true = x_true.to(device, non_blocking=True)
-			pred = model(x_masked)
 
-			loss_parts = []
-			for i in range(len(x_masked)):
-				idxs = mask_idx[i]
-				if len(idxs) > 0:
-					loss_parts.append(F.mse_loss(pred[i, idxs], x_true[i, idxs]))
+			with torch.cuda.amp.autocast(enabled=CONFIG.get("use_amp", True)):
+				pred = model(x_masked)
 
-			loss = torch.stack(loss_parts).mean() if loss_parts else torch.tensor(0.0, device=device)
+				loss_parts = []
+				for i in range(len(x_masked)):
+					idxs = mask_idx[i]
+					if len(idxs) > 0:
+						loss_parts.append(F.mse_loss(pred[i, idxs], x_true[i, idxs]))
+
+				loss = torch.stack(loss_parts).mean() if loss_parts else torch.tensor(0.0, device=device)
 
 			optimizer.zero_grad(set_to_none=True)
-			loss.backward()
-			optimizer.step()
+			scaler.scale(loss).backward()
+			scaler.step(optimizer)
+			scaler.update()
 
 			running_loss += loss.item()
 			num_batches += 1
@@ -843,7 +857,9 @@ def main():
 			for x_masked, x_true, mask_idx in val_loader:
 				x_masked = x_masked.to(device, non_blocking=True)
 				x_true = x_true.to(device, non_blocking=True)
-				pred = model(x_masked)
+
+				with torch.cuda.amp.autocast(enabled=CONFIG.get("use_amp", True)):
+					pred = model(x_masked)
 
 				loss_parts = []
 				for i in range(len(x_masked)):
