@@ -30,6 +30,9 @@ source /global/software/rocky-8.x86_64/manual/modules/langs/anaconda3/2024.02-1/
 conda activate bridge-rna
 echo "Python: $(which python)"
 
+# ── Fix GLIBCXX version mismatch ───────────────────────────────────────────────
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
 # ── Project directory ──────────────────────────────────────────────────────────
 cd /global/scratch/users/minggangli/bridge-rna
 
