@@ -536,12 +536,53 @@ def _init_ddp():
 	return rank, world, local_rank, device
 
 
+# ============================================================
+# VARIANT CONFIGS (selected via DATASET_VARIANT env var)
+# ============================================================
+VARIANT_CONFIGS = {
+	"human_5k": {
+		"expression_parquet": "./data/archs4/human_5k_merged/expression.parquet",
+		"samples_json": "./data/archs4/human_5k/samples.json",
+		"checkpoint_dir": "./checkpoints/human_5k",
+		"train_subset": 4000,
+		"val_subset": 800,
+		"balanced_sampling": False,
+	},
+	"mouse_5k": {
+		"expression_parquet": "./data/archs4/mouse_5k_merged/expression.parquet",
+		"samples_json": "./data/archs4/mouse_5k/samples.json",
+		"checkpoint_dir": "./checkpoints/mouse_5k",
+		"train_subset": 4000,
+		"val_subset": 800,
+		"balanced_sampling": False,
+	},
+	"mixed_5k": {
+		"expression_parquet": "./data/archs4/mixed_5k_merged/expression.parquet",
+		"samples_json": "./data/archs4/mixed_5k/samples.json",
+		"checkpoint_dir": "./checkpoints/mixed_5k",
+		"train_subset": 4000,
+		"val_subset": 800,
+		"balanced_sampling": True,
+	},
+}
+
+
 def main():
 	print("\n[STARTUP] train_single.py started - initializing DDP...", flush=True)
 	script_start = time.time()
 
 	rank, world_size, local_rank, device = _init_ddp()
 	is_main = rank == 0
+
+	# --- Variant selection via DATASET_VARIANT env var ---
+	variant = os.environ.get("DATASET_VARIANT", "")
+	if is_main and variant:
+		if variant in VARIANT_CONFIGS:
+			CONFIG.update(VARIANT_CONFIGS[variant])
+			CONFIG["dataset_variant"] = variant
+			print(f"\n[VARIANT] Dataset variant: {variant}", flush=True)
+		else:
+			print(f"\n[VARIANT] WARNING: Unknown variant '{variant}', using default CONFIG.", flush=True)
 
 	if is_main:
 		print("\n" + "=" * 70)
@@ -550,7 +591,12 @@ def main():
 		print(f"\n[SETUP] Rank: {rank}, Device: {device}")
 
 	if is_main and HAS_WANDB:
-		wandb.init(project="Attention", config=CONFIG)
+		wandb.init(
+			project="bridge-rna",
+			group=variant or "default",
+			name=variant or None,
+			config=CONFIG,
+		)
 		for key in CONFIG:
 			if key in wandb.config:
 				CONFIG[key] = wandb.config[key]
