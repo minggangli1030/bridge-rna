@@ -1,17 +1,21 @@
-import archs4py as a4
+import s3fs
 
-urls = [
-    "https://s3.amazonaws.com/mssm-seq-matrix/human_gene_v2.5.h5",
-    "https://mssm-seq-matrix.s3.amazonaws.com/human_gene_v2.5.h5",
-    "https://s3.amazonaws.com/archs4-maayan/human_gene_v2.5.h5",
-]
+# List contents of the mssm-seq-matrix bucket to find correct file paths
+print("Listing mssm-seq-matrix bucket...")
+try:
+    s3 = s3fs.S3FileSystem(anon=True)
+    files = s3.ls("mssm-seq-matrix/")
+    for f in files:
+        print(" ", f)
+except Exception as e:
+    print("mssm-seq-matrix failed:", e)
 
-for url in urls:
-    try:
-        df = a4.data.rand_remote(url, 3, remove_sc=True)
-        print("WORKS: " + url)
-        print("Shape: " + str(df.shape))
-        break
-    except Exception as e:
-        print("FAIL: " + url)
-        print("  -> " + str(e))
+# Also try maayanlab-public bucket
+print("\nListing maayanlab-public bucket...")
+try:
+    s3 = s3fs.S3FileSystem(anon=True)
+    files = s3.ls("maayanlab-public/")
+    for f in files:
+        print(" ", f)
+except Exception as e:
+    print("maayanlab-public failed:", e)
