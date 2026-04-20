@@ -285,6 +285,9 @@ class ExpressionLoader:
             self._exon_mouse = df.set_index("gene_symbol")["exon_length"]
         return self._exon_mouse
 
+    def _h5_s3_path(self, species: str) -> str:
+        return self.config.archs4_human_s3 if species == "human" else self.config.archs4_mouse_s3
+
     def _load_h5_meta(self, h5_path: str, species: str):
         """Read H5 metadata: gene symbols, GEO accessions, SC probabilities."""
         import h5py
