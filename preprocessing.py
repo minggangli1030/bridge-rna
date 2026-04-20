@@ -459,8 +459,6 @@ class ExpressionLoader:
         Fast subset extraction. Uses local archs4py when H5 exists, S3 streaming otherwise.
         Returns (batch_paths, metadata_df).
         """
-        import archs4py as a4
-
         cfg = self.config
         n_samples = cfg.max_samples_per_species
         t0 = time.time()
@@ -472,6 +470,7 @@ class ExpressionLoader:
 
         local_exists = os.path.exists(h5_path)
         if local_exists:
+            import archs4py as a4
             print(f"    SUBSET MODE via archs4py: {n_samples:,} random samples (seed={cfg.seed})")
             print(f"    Reading from {h5_path}...", flush=True)
             raw_df = a4.data.rand(h5_path, n_samples, seed=cfg.seed, remove_sc=True)
