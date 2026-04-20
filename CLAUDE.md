@@ -61,3 +61,31 @@ Average predictions from the 3 trained models at inference time. Since all model
 Add a gating network that routes each sample to the appropriate expert based on its expression profile. The 3 variant-trained models become the experts — the gate learns that human-like samples should route to the human expert, mouse-like to the mouse expert, etc.
 
 Scientifically compelling question: *does the model learn species identity from expression alone?* The mixed dataset experiment is exactly the ablation that informs whether MoE routing is learnable.
+
+## Phase 2: Benchmarking on OSDR (NASA Spaceflight Data)
+
+After training completes, evaluate all 3 models **zero-shot** on OSDR data — no retraining, just forward pass.
+
+**Why OSDR is a strong benchmark:**
+- True OOD test: microgravity, radiation, spaceflight stress responses — nothing like ARCHS4 training data
+- Controlled comparison: same gene space (shared orthologs), same preprocessing, only training data differs
+- Both human and mouse samples available → all 3 variants can be evaluated fairly
+- Tests whether learned gene-gene relationships transfer to genuinely new biology, not just held-out ARCHS4 patterns
+
+**The benchmark story:**
+> "We train on ARCHS4 bulk RNA-seq and evaluate zero-shot reconstruction on NASA spaceflight data — a domain the model never saw during training."
+
+**What to measure:**
+- Reconstruction loss (MSE on masked genes) per model on OSDR samples
+- Does `mixed_5k` outperform `human_5k` on human spaceflight samples? → cross-species training generalizes better
+- Does `human_5k` beat `mixed_5k` on human samples? → in-distribution specialization wins
+
+**Key question this answers:**
+The OSDR benchmark directly informs the Ensemble vs. MoE decision:
+- `mixed_5k` best on OSDR → model learns fundamental expression biology → Ensemble likely sufficient
+- Single-species models best on matched-species OSDR → specialization matters → MoE worth building
+
+**Practical notes:**
+- OSDR datasets are small (tens to hundreds of samples per study) — aggregate across multiple studies for stable signal
+- `sp26_nasa` repo already has some OSDR preprocessing infrastructure to build on
+- Preprocessing must use the same gene vocabulary (`canonical_genes.csv`) as the trained models
