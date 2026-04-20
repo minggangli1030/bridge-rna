@@ -20,13 +20,27 @@ conda activate bridge-rna
 
 cd /global/scratch/users/minggangli/bridge-rna/data/archs4
 
-pip install archs4py -q
+echo "Downloading human_matrix_v11.h5 from S3..."
+python -c "
+import s3fs, sys
+s3 = s3fs.S3FileSystem(anon=True)
+src = 'mssm-seq-matrix/human_matrix_v11.h5'
+dst = 'human_matrix_v11.h5'
+print('Starting human download...', flush=True)
+s3.get(src, dst)
+print('Human done.', flush=True)
+"
 
-echo "Downloading human_gene_v2.5.h5..."
-python -c "import archs4py as a4; a4.data.download('human', version='v2.5', dest_dir='.')"
-
-echo "Downloading mouse_gene_v2.5.h5..."
-python -c "import archs4py as a4; a4.data.download('mouse', version='v2.5', dest_dir='.')"
+echo "Downloading mouse_matrix_v11.h5 from S3..."
+python -c "
+import s3fs, sys
+s3 = s3fs.S3FileSystem(anon=True)
+src = 'mssm-seq-matrix/mouse_matrix_v11.h5'
+dst = 'mouse_matrix_v11.h5'
+print('Starting mouse download...', flush=True)
+s3.get(src, dst)
+print('Mouse done.', flush=True)
+"
 
 echo "Download complete at $(date)"
 ls -lh .
