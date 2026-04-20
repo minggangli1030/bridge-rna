@@ -175,6 +175,12 @@ class PreprocessingConfig:
 
     # --- Paths ---
     archs4_dir: str = "data/archs4"
+    # Local H5 filenames (v11 naming)
+    archs4_human_h5: str = "human_matrix_v11.h5"
+    archs4_mouse_h5: str = "mouse_matrix_v11.h5"
+    # S3 paths (used automatically when local H5 is absent)
+    archs4_human_s3: str = "mssm-seq-matrix/human_matrix_v11.h5"
+    archs4_mouse_s3: str = "mssm-seq-matrix/mouse_matrix_v11.h5"
     orthologs_file: str = "data/ensembl/orthologs_one2one.txt"
     protein_coding_file: str = "data/ensembl/protein_coding_ortholog_genes.txt"
     exon_lengths_human: str = "data/gencode/gencode_v49_gene_exon_lengths.csv"
@@ -289,7 +295,9 @@ class ExpressionLoader:
         print(f"    H5 shape: {n_genes:,} genes × {n_samples:,} samples")
 
         print(f"    Loading gene symbols...", end=" ", flush=True)
-        gene_symbols = np.array([g.decode() for g in h["meta/genes/symbol"][:]])
+        # v2.5 used meta/genes/symbol; v11 uses meta/genes/gene_symbol
+        gene_sym_key = "meta/genes/gene_symbol" if "meta/genes/gene_symbol" in h else "meta/genes/symbol"
+        gene_symbols = np.array([g.decode() for g in h[gene_sym_key][:]])
         print(f"done ({len(gene_symbols):,})")
 
         print(f"    Loading sample accessions...", end=" ", flush=True)
@@ -406,6 +414,39 @@ class ExpressionLoader:
         
         return pd.concat(good_samples, axis=1)
 
+    def _rand_s3(self, s3_path: str, n_samples: int, seed: int) -> pd.DataFrame:
+        """
+        Stream n_samples random bulk samples directly from S3 using s3fs + h5py.
+        Falls back to this when local H5 file is not present.
+        Returns a DataFrame with gene symbols as index and sample accessions as columns.
+        """
+        import random
+        import s3fs
+        import h5py as h5
+
+        rng = random.Random(seed)
+        s3 = s3fs.S3FileSystem(anon=True)
+        print(f"    Streaming from S3: {s3_path}", flush=True)
+
+        with h5.File(s3.open(s3_path, "rb"), "r") as f:
+            gene_sym_key = "meta/genes/gene_symbol" if "meta/genes/gene_symbol" in f else "meta/genes/symbol"
+            gene_symbols = np.array([g.decode() for g in f[gene_sym_key][:]])
+            geo_accessions = np.array([s.decode() for s in f["meta/samples/geo_accession"][:]])
+            sc_prob = f["meta/samples/singlecellprobability"][:]
+
+            bulk_idx = list(np.where(sc_prob < self.SC_THRESHOLD)[0])
+            print(f"    {len(bulk_idx):,} bulk samples available", flush=True)
+
+            take = min(n_samples, len(bulk_idx))
+            chosen = sorted(rng.sample(bulk_idx, take))
+            print(f"    Reading {take:,} samples from H5...", flush=True)
+
+            expr = f["data/expression"][:, chosen]  # (n_genes, take)
+
+        samples = geo_accessions[chosen]
+        df = pd.DataFrame(expr, index=gene_symbols, columns=samples)
+        return df
+
     def _extract_subset(
         self,
         h5_path: str,
@@ -415,7 +456,7 @@ class ExpressionLoader:
         gene_name_map: Optional[dict] = None,
     ) -> tuple[list[Path], pd.DataFrame]:
         """
-        Fast subset extraction using archs4py.
+        Fast subset extraction. Uses local archs4py when H5 exists, S3 streaming otherwise.
         Returns (batch_paths, metadata_df).
         """
         import archs4py as a4
@@ -429,9 +470,16 @@ class ExpressionLoader:
             else self.exon_lengths_mouse
         )
 
-        print(f"    SUBSET MODE via archs4py: {n_samples:,} random samples (seed={cfg.seed})")
-        print(f"    Reading from {h5_path}...", flush=True)
-        raw_df = a4.data.rand(h5_path, n_samples, seed=cfg.seed, remove_sc=True)
+        local_exists = os.path.exists(h5_path)
+        if local_exists:
+            print(f"    SUBSET MODE via archs4py: {n_samples:,} random samples (seed={cfg.seed})")
+            print(f"    Reading from {h5_path}...", flush=True)
+            raw_df = a4.data.rand(h5_path, n_samples, seed=cfg.seed, remove_sc=True)
+        else:
+            print(f"    Local H5 not found — streaming from S3 (seed={cfg.seed})")
+            s3_path = self._h5_s3_path(species)
+            raw_df = self._rand_s3(s3_path, n_samples, cfg.seed)
+
         print(f"    Got {raw_df.shape[1]:,} bulk samples × {raw_df.shape[0]:,} genes "
               f"in {time.time() - t0:.0f}s")
 
@@ -704,8 +752,11 @@ class RNADatasetBuilder:
         return [self.config.species]
 
     def _h5_path(self, species: str) -> str:
-        fname = "human_gene_v2.5.h5" if species == "human" else "mouse_gene_v2.5.h5"
+        fname = self.config.archs4_human_h5 if species == "human" else self.config.archs4_mouse_h5
         return os.path.join(self.config.archs4_dir, fname)
+
+    def _h5_s3_path(self, species: str) -> str:
+        return self.config.archs4_human_s3 if species == "human" else self.config.archs4_mouse_s3
 
     def _apply_final_normalization_once(self, species_batch_paths: dict[str, list[Path]]):
         """
