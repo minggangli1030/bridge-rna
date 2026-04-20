@@ -442,9 +442,28 @@ class ExpressionLoader:
 
             take = min(n_samples, len(bulk_idx))
             chosen = sorted(rng.sample(bulk_idx, take))
-            print(f"    Reading {take:,} samples from H5...", flush=True)
+            print(f"    Reading {take:,} samples in batches...", flush=True)
 
-            expr = f["data/expression"][:, chosen]  # (n_genes, take)
+            expr_ds = f["data/expression"]
+            n_genes = expr_ds.shape[0]
+            chosen_arr = np.array(chosen, dtype=np.int64)  # already sorted
+            result = np.empty((n_genes, len(chosen_arr)), dtype=np.float32)
+
+            # Read in contiguous column windows to minimize S3 requests.
+            # Each window covers a contiguous range [start:end] of sample columns;
+            # we extract only our chosen indices within that window.
+            COL_WINDOW = 500
+            out_col = 0
+            for w in range(0, len(chosen_arr), COL_WINDOW):
+                batch_idx = chosen_arr[w: w + COL_WINDOW]
+                start, end = int(batch_idx[0]), int(batch_idx[-1]) + 1
+                block = expr_ds[:, start:end]           # one contiguous S3 read
+                rel = (batch_idx - start).astype(int)
+                result[:, out_col: out_col + len(batch_idx)] = block[:, rel]
+                out_col += len(batch_idx)
+                print(f"    {min(w + COL_WINDOW, len(chosen_arr)):,}/{len(chosen_arr):,} samples read", flush=True)
+
+            expr = result
 
         samples = geo_accessions[chosen]
         df = pd.DataFrame(expr, index=gene_symbols, columns=samples)
