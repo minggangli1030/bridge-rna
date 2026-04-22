@@ -112,7 +112,7 @@ DEFAULT_OSDR_CACHE = Path(__file__).parent / "data" / "osdr"
 # Mask ratios + block masking for evaluation
 MASK_RATIOS = [0.15, 0.50, 0.80]
 BLOCK_SIZES = [50]  # block masking: mask contiguous runs of this many genes
-BATCH_SIZE = 16     # inference batch size
+BATCH_SIZE = 4      # inference batch size (conservative for 11GB 1080 Ti with 14k+ genes)
 
 
 # ── Preprocessing helpers ──────────────────────────────────────────────────────
@@ -492,7 +492,10 @@ def evaluate_model(
         all_pearson_gene_mean, all_pearson_sample_mean = [], []
         all_mse_gene_mean, all_mse_sample_mean = [], []
 
-        for batch_start in range(0, N, batch_size):
+        n_batches = (N + batch_size - 1) // batch_size
+        for batch_idx, batch_start in enumerate(range(0, N, batch_size)):
+            if batch_idx % max(1, n_batches // 5) == 0:
+                print(f"      batch {batch_idx+1}/{n_batches}", flush=True)
             batch = x_true[batch_start : batch_start + batch_size]
             b = len(batch)
 
@@ -641,9 +644,12 @@ def main():
     osdr_gene_mask = np.array([(g in set(osdr_df.columns)) for g in canonical_genes], dtype=bool)
 
     spaceflight_labels = osdr_df.get("spaceflight", pd.Series(np.zeros(len(osdr_df), dtype=int))).values
+    n_flight   = int(np.nansum(spaceflight_labels == 1))
+    n_control  = int(np.nansum(spaceflight_labels == 0))
+    n_unlabeled = int(np.sum(np.isnan(spaceflight_labels.astype(float))))
 
-    print(f"[EVAL] {x_osdr.shape[0]} samples: {spaceflight_labels.sum()} spaceflight, "
-          f"{(spaceflight_labels == 0).sum()} control", flush=True)
+    print(f"[EVAL] {x_osdr.shape[0]} samples: {n_flight} spaceflight, "
+          f"{n_control} control, {n_unlabeled} unlabeled", flush=True)
     print(f"[EVAL] Gene coverage: {osdr_gene_mask.sum()}/{len(canonical_genes)} canonical genes present in OSDR", flush=True)
 
     # ── W&B ────────────────────────────────────────────────────────────────────
@@ -661,8 +667,8 @@ def main():
                     "osdr_gene_coverage": int(osdr_gene_mask.sum()),
                     "mask_ratios": MASK_RATIOS,
                     "block_sizes": BLOCK_SIZES,
-                    "spaceflight_samples": int(spaceflight_labels.sum()),
-                    "control_samples": int((spaceflight_labels == 0).sum()),
+                    "spaceflight_samples": n_flight,
+                    "control_samples": n_control,
                 },
             )
         except Exception as e:
