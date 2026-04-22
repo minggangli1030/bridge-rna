@@ -158,14 +158,29 @@ def download_osdr_study(study_id: str, counts_filename: str, cache_dir: Path) ->
     Download a single OSDR study counts CSV from NASA GeneLab.
     Returns DataFrame indexed by gene, columns = samples, or None on failure.
     """
+    import re
     import urllib.request
 
-    # NASA GeneLab download URL pattern (as of 2025)
-    # OSD-{id} = new naming, GLDS-{id} = legacy naming (still served)
+    # The static file server uses GLDS-{num} paths, not OSD-{num}.
+    # Extract GLDS id from the filename itself (e.g. "GLDS-100_rna_seq_..." → "GLDS-100").
+    m = re.match(r"(GLDS-\d+)", counts_filename)
+    glds_id = m.group(1) if m else study_id
+
+    # Also try with the numeric OSD id mapped to GLDS pattern
+    osd_m = re.match(r"OSD-(\d+)", study_id)
+    glds_from_osd = f"GLDS-{osd_m.group(1)}" if osd_m else glds_id
+
     base_urls = [
-        f"https://genelab-data.ndc.nasa.gov/genelab/static/media/dataset/{study_id}/rna_seq/{counts_filename}",
-        f"https://osdr.nasa.gov/geneslab/static/media/dataset/{study_id}/rna_seq/{counts_filename}",
+        # Primary: GLDS id extracted from filename
+        f"https://genelab-data.ndc.nasa.gov/genelab/static/media/dataset/{glds_id}/rna_seq/{counts_filename}",
+        # Fallback: GLDS id derived from OSD accession number
+        f"https://genelab-data.ndc.nasa.gov/genelab/static/media/dataset/{glds_from_osd}/rna_seq/{counts_filename}",
+        # Some files sit at the dataset root, not in rna_seq/
+        f"https://genelab-data.ndc.nasa.gov/genelab/static/media/dataset/{glds_id}/{counts_filename}",
     ]
+    # Deduplicate while preserving order
+    seen = set()
+    base_urls = [u for u in base_urls if not (u in seen or seen.add(u))]
 
     out_path = cache_dir / "raw" / counts_filename
     out_path.parent.mkdir(parents=True, exist_ok=True)
