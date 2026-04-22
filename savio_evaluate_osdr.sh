@@ -1,8 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=osdr-eval
 #SBATCH --account=ic_cdss170
-#SBATCH --partition=savio2_1080ti   # 1 GPU is enough for inference
-#SBATCH --gres=gpu:1
+#SBATCH --partition=savio2          # CPU node — SLiMPerformer OOMs on 1080Ti at 14k genes
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -104,7 +103,9 @@ python evaluate_osdr.py \
     --output-dir results/osdr_eval \
     --metadata-csv "$METADATA" \
     $RAW_DIR_ARG \
-    --batch-size 32 \
+    --osdr-parquet data/osdr/osdr_expression.parquet \
+    --batch-size 8 \
+    --device cpu \
     --wandb
 
 echo ""
