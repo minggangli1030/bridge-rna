@@ -592,7 +592,7 @@ def main():
 
 	if is_main and HAS_WANDB:
 		wandb.init(
-			project="bridge-rna",
+			project=os.environ.get("WANDB_PROJECT", "bridge-rna"),
 			group=variant or "default",
 			name=variant or None,
 			config=CONFIG,
