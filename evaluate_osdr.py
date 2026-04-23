@@ -584,7 +584,13 @@ def main():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         device = torch.device(args.device)
-    print(f"[EVAL] Device: {device}", flush=True)
+
+    if device.type == "cpu":
+        n_threads = int(os.environ.get("OMP_NUM_THREADS", torch.get_num_threads()))
+        torch.set_num_threads(n_threads)
+        print(f"[EVAL] Device: cpu ({n_threads} threads)", flush=True)
+    else:
+        print(f"[EVAL] Device: {device}", flush=True)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

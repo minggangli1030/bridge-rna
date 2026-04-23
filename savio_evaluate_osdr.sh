@@ -4,9 +4,9 @@
 #SBATCH --partition=savio2          # CPU node — SLiMPerformer OOMs on 1080Ti at 14k genes
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
-#SBATCH --time=04:00:00
+#SBATCH --cpus-per-task=20          # savio2 has 20 cores/node — use all for torch CPU parallelism
+#SBATCH --mem=64G
+#SBATCH --time=12:00:00
 #SBATCH --output=/global/scratch/users/minggangli/bridge-rna/logs/osdr-eval-%j.out
 #SBATCH --error=/global/scratch/users/minggangli/bridge-rna/logs/osdr-eval-%j.err
 #SBATCH --mail-type=END,FAIL
@@ -37,6 +37,11 @@ export WANDB_ENTITY="minggangli1030"
 
 # ── Project directory ──────────────────────────────────────────────────────────
 cd /global/scratch/users/minggangli/bridge-rna
+
+# Use all allocated cores for CPU inference
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
+torch_threads=$SLURM_CPUS_PER_TASK
 
 # ── Checkpoint paths ───────────────────────────────────────────────────────────
 HUMAN_CKPT="checkpoints/human_5k/best_model.pt"
@@ -104,7 +109,7 @@ python evaluate_osdr.py \
     --metadata-csv "$METADATA" \
     $RAW_DIR_ARG \
     --osdr-parquet data/osdr/osdr_expression.parquet \
-    --batch-size 8 \
+    --batch-size 16 \
     --device cpu \
     --wandb
 
