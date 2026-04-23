@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20          # savio2 has 20 cores/node — use all for torch CPU parallelism
-#SBATCH --mem=64G
+#SBATCH --mem=32G
 #SBATCH --time=24:00:00
 #SBATCH --output=/global/scratch/users/minggangli/bridge-rna/logs/osdr-eval-%j.out
 #SBATCH --error=/global/scratch/users/minggangli/bridge-rna/logs/osdr-eval-%j.err
