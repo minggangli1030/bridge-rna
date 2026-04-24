@@ -36,10 +36,10 @@ Three 5k-sample datasets to compare species-specific vs. cross-species generaliz
 
 ```bash
 # Preprocess all 3 variants (job array, streams from S3)
-sbatch savio_preprocess.sh
+sbatch scripts/savio_preprocess.sh
 
 # Train all 3 variants (job array, 4x GTX 1080 Ti, W&B logging)
-sbatch --dependency=afterok:<preprocess_job_id> savio_train_experiments.sh
+sbatch --dependency=afterok:<preprocess_job_id> scripts/savio_train_experiments.sh
 ```
 
 Training variant is selected via `DATASET_VARIANT` env var (set automatically by the job array). All 3 runs appear in W&B under project `bridge-rna`, grouped by variant name.
@@ -89,3 +89,38 @@ The OSDR benchmark directly informs the Ensemble vs. MoE decision:
 - OSDR datasets are small (tens to hundreds of samples per study) — aggregate across multiple studies for stable signal
 - `sp26_nasa` repo already has some OSDR preprocessing infrastructure to build on
 - Preprocessing must use the same gene vocabulary (`canonical_genes.csv`) as the trained models
+
+## OSDR Eval — Current State (2026-04-23)
+
+All 3 variants trained and evaluated zero-shot on OSDR via `evaluate_osdr.py` (n=1855 mouse samples). Reported metric is **per-sample Pearson on masked positions** (see `pearson_per_sample`).
+
+| masking       | walt (20K-sample ref) | human_5k | mouse_5k | mixed_5k | gene_mean baseline |
+|---------------|-----------------------|----------|----------|----------|--------------------|
+| random_15pct  | 0.892                 | 0.687    | 0.781    | 0.758    | ~0.846             |
+| random_50pct  | 0.842                 | 0.685    | 0.770    | 0.757    | ~0.846             |
+| block         | 0.881 (b=0.30)        | 0.659    | 0.771    | 0.740    | ~0.840             |
+
+**Problem:** all three variants are **below the gene_mean baseline**. Walt's reference model clears it by ~5 points. Species-comparison conclusions (mouse>mixed>human; MoE vs Ensemble) are not yet interpretable — the models haven't learned anything beyond marginal gene statistics, so the ranking is unreliable.
+
+**Do not start Ensemble/MoE work until at least one variant beats `baseline_gene_mean_pearson`.**
+
+### Diagnostic plan (in order)
+
+**Step 1 — Rule out an alignment bug first (cheap).** `check_alignment.py` at repo root runs 8 checks on a single checkpoint + OSDR parquet:
+  1. checkpoint config dump
+  2. train-parquet gene order vs `canonical_genes`
+  3. OSDR input distribution (expect log1p TPM, ~0–10)
+  4. prediction spot-check (range, per-sample pearson, constant-output flag)
+  5. corr(pred, gene_mean) — tests if the model collapsed to "predict gene average"
+  6. identity-recovery at UNmasked positions (if low → model is broken independent of masking)
+  7. fraction of random-mask positions landing on zero-filled (OSDR-missing) genes
+  8. pearson split: present-only genes vs include-missing (known concern: the mask at `evaluate_osdr.py:449` samples from all `G` genes, including the ~fill-zero missing ones)
+
+Run:
+```bash
+python check_alignment.py \
+  --checkpoint checkpoints/human_5k/best_model.pt \
+  --osdr-parquet data/osdr/osdr_expression.parquet
+```
+
+**Step 2 — If alignment is clean, scale up `human_5k` to 20K samples** (matches Walt's scale) as a direct A/B. If the 20K run beats the gene_mean baseline, scale is the issue and the 3-variant experiment needs redoing at 20K. If it still fails → architecture/training-loop bug.
