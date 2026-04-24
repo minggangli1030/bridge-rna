@@ -82,15 +82,30 @@ def main():
     # ── [3] OSDR input distribution ────────────────────────────────────────
     osdr_df = pd.read_parquet(args.osdr_parquet)
     osdr_cols = set(osdr_df.columns.tolist())
-    x_osdr = osdr_df[canonical_genes].values.astype("float32")
+
+    # Mirror evaluate_osdr.py: if training gene list differs, re-align OSDR
+    # to training gene order (model embedding only has len(train_gene_list) rows).
+    if train_gene_list and train_gene_list != canonical_genes:
+        print("[3a] RE-ALIGNMENT: train_gene_list differs from canonical. "
+              f"Reindexing OSDR from {len(canonical_genes)} cols "
+              f"to {len(train_gene_list)} cols (training gene order).")
+        x_osdr = (pd.DataFrame(osdr_df[canonical_genes].values, columns=canonical_genes)
+                  .reindex(columns=train_gene_list, fill_value=0.0)
+                  .values.astype("float32"))
+        gene_list_for_eval = train_gene_list
+    else:
+        x_osdr = osdr_df[canonical_genes].values.astype("float32")
+        gene_list_for_eval = canonical_genes
+
     present_mask = np.array(
-        [(g in osdr_cols) for g in canonical_genes], dtype=bool
+        [(g in osdr_cols) for g in gene_list_for_eval], dtype=bool
     )
     nonzero_frac = (x_osdr != 0).mean(axis=1)
 
-    print("[3] OSDR INPUT")
+    print("[3] OSDR INPUT (post-alignment)")
     print(f"  df shape                : {osdr_df.shape}")
-    print(f"  canonical cols present  : {present_mask.sum()}/{len(canonical_genes)}")
+    print(f"  eval x shape            : {x_osdr.shape}")
+    print(f"  cols present in OSDR    : {present_mask.sum()}/{len(gene_list_for_eval)}")
     print(f"  x range                 : [{x_osdr.min():.3f}, {x_osdr.max():.3f}]")
     print(f"  x mean / std            : {x_osdr.mean():.3f} / {x_osdr.std():.3f}")
     print(f"  per-sample nonzero frac : mean={nonzero_frac.mean():.3f} min={nonzero_frac.min():.3f}")
