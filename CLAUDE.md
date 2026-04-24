@@ -124,3 +124,35 @@ python check_alignment.py \
 ```
 
 **Step 2 — If alignment is clean, scale up `human_5k` to 20K samples** (matches Walt's scale) as a direct A/B. If the 20K run beats the gene_mean baseline, scale is the issue and the 3-variant experiment needs redoing at 20K. If it still fails → architecture/training-loop bug.
+
+## Alignment Diagnostic Results (2026-04-24)
+
+Ran `check_alignment.py` on `checkpoints/human_5k/best_model.pt` (via GPU srun on savio2_1080ti). Alignment is fine — the model is genuinely undertrained.
+
+**Key finding from [5]:** `corr(pred, gene_mean) = 0.682` ≈ `corr(pred, true) = 0.679`. The model's *entire* signal comes from predicting the per-gene mean. It's a strictly noisier version of the gene_mean baseline, which is exactly why it loses to it.
+
+Other checks:
+- **[2]** Training parquet has 14818 genes, canonical_genes has 15734 — `evaluate_osdr.py:702-708` handles this via re-indexing (confirmed firing during real eval; otherwise it would have crashed at `gene_embedding`).
+- **[4]** Predictions calibrated on first-order stats (per-sample mean 2.9 ≈ truth 2.9, std close). Model isn't broken, just shallow.
+- **[6]** Identity recovery at unmasked positions r=0.86–0.87 — OK, not 1.0 but not zero.
+- **[7]/[8]** After re-alignment, all 14818 training genes are present in OSDR (delta = 0.000). The "mask lands on zero-filled gene" concern doesn't apply.
+
+**Decision:** proceed with Step 2. Ranking (mouse>mixed>human) in the 5K results CSV is real but meaningless — all three are in the gene-mean-collapse regime.
+
+## Step 2 — human_20k A/B scale-up
+
+Dedicated scripts for the one-variant A/B (leaves `human_5k`/`mouse_5k`/`mixed_5k` intact):
+
+```bash
+# 1. Preprocess 20k human samples (~6-8h on savio2)
+sbatch scripts/savio_preprocess_human_20k.sh
+
+# 2. Train after preprocess completes (24h wall on 4x 1080 Ti)
+sbatch --dependency=afterok:<preprocess_jobid> scripts/savio_train_human_20k.sh
+
+# 3. Evaluate on OSDR (add --checkpoints checkpoints/human_20k/best_model.pt when running evaluate_osdr.py)
+```
+
+`train_single.py` has `human_20k` in `VARIANT_CONFIGS`: `train_subset=16000`, `val_subset=3200`, balanced_sampling off.
+
+**Success criterion:** OSDR per-sample Pearson > `baseline_gene_mean_pearson` (~0.85). Walt's 20K model hits 0.892 at random_15pct — that's the target. If `human_20k` also stays at ~0.68, the issue is architectural (e.g., 2 layers insufficient, mask ratio 0.15 wrong for 14k-token sequence, LR schedule) not data scale.

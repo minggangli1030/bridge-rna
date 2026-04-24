@@ -564,6 +564,16 @@ VARIANT_CONFIGS = {
 		"val_subset": 800,
 		"balanced_sampling": True,
 	},
+	# Scale A/B: match walt's ~20K training scale to test whether 5K was
+	# just undertrained (OSDR diagnostic showed model collapsed to gene-mean).
+	"human_20k": {
+		"expression_parquet": "./data/archs4/human_20k_merged/expression.parquet",
+		"samples_json": "./data/archs4/human_20k/samples.json",
+		"checkpoint_dir": "./checkpoints/human_20k",
+		"train_subset": 16000,
+		"val_subset": 3200,
+		"balanced_sampling": False,
+	},
 }
 
 
