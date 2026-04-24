@@ -81,9 +81,10 @@ def main():
 
     # ── [3] OSDR input distribution ────────────────────────────────────────
     osdr_df = pd.read_parquet(args.osdr_parquet)
+    osdr_cols = set(osdr_df.columns.tolist())
     x_osdr = osdr_df[canonical_genes].values.astype("float32")
     present_mask = np.array(
-        [(g in set(osdr_df.columns)) for g in canonical_genes], dtype=bool
+        [(g in osdr_cols) for g in canonical_genes], dtype=bool
     )
     nonzero_frac = (x_osdr != 0).mean(axis=1)
 
