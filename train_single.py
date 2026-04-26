@@ -574,6 +574,25 @@ VARIANT_CONFIGS = {
 		"val_subset": 3200,
 		"balanced_sampling": False,
 	},
+	# Architecture A/B on human_20k. Diagnostic confirmed gene-mean collapse
+	# at num_layers=2 / mask_ratio=0.15 / weight_decay=0 (corr(pred, gene_mean)
+	# ≈ corr(pred, true) ≈ 0.76). Three changes intended to force the model to
+	# learn gene-gene structure rather than per-gene means:
+	#   - num_layers 2 → 4: more rounds of attention message-passing across 14k tokens
+	#   - mask_ratio 0.15 → 0.30: harder reconstruction, can't shortcut to the mean
+	#   - weight_decay 0 → 0.01: regularize against in-distribution overfitting
+	# Reuses the same human_20k merged parquet — no re-preprocessing needed.
+	"human_20k_v2": {
+		"expression_parquet": "./data/archs4/human_20k_merged/expression.parquet",
+		"samples_json": "./data/archs4/human_20k/samples.json",
+		"checkpoint_dir": "./checkpoints/human_20k_v2",
+		"train_subset": 16000,
+		"val_subset": 3200,
+		"balanced_sampling": False,
+		"num_layers": 4,
+		"mask_ratio": 0.30,
+		"weight_decay": 0.01,
+	},
 }
 
 
