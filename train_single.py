@@ -870,7 +870,30 @@ def main():
 		},
 	}
 
-	for epoch in range(CONFIG["epochs"]):
+	# Resume from a saved per-epoch checkpoint when RESUME_FROM is set.
+	# Walltime fallback: per-epoch checkpoints carry optimizer/scheduler state.
+	# best_val_loss / patience_counter are reset within the resumed run; the
+	# cross-run global_best tracking already handles overall best selection.
+	start_epoch = 0
+	resume_from = os.environ.get("RESUME_FROM", "").strip()
+	if resume_from:
+		resume_path = Path(resume_from)
+		if not resume_path.exists():
+			raise FileNotFoundError(f"RESUME_FROM checkpoint not found: {resume_path}")
+		map_loc = {f"cuda:0": f"cuda:{local_rank}"} if torch.cuda.is_available() else "cpu"
+		ck = torch.load(resume_path, map_location=map_loc, weights_only=False)
+		model.module.load_state_dict(ck["model_state_dict"])
+		optimizer.load_state_dict(ck["optimizer_state_dict"])
+		scheduler.load_state_dict(ck["scheduler_state_dict"])
+		start_epoch = int(ck["epoch"])
+		if is_main:
+			print(f"\n[RESUME] Loaded {resume_path}", flush=True)
+			print(f"[RESUME] resuming at epoch {start_epoch + 1}/{CONFIG['epochs']}", flush=True)
+			print(f"[RESUME] checkpoint val_loss={ck.get('val_loss')}", flush=True)
+			print(f"[RESUME] best_val_loss / patience reset within this run", flush=True)
+		dist.barrier()
+
+	for epoch in range(start_epoch, CONFIG["epochs"]):
 		epoch_start = time.time()
 		train_epoch_controller.set_epoch(epoch)
 
