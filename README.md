@@ -12,19 +12,24 @@ bridge-rna/
 ├── CLAUDE.md                         project context: architecture, experiments, OSDR state
 │
 ├── train_single.py                   train one variant (DDP), picks variant via DATASET_VARIANT env
+├── train_moe.py                      MoE PoC: 3 frozen 5k experts + softmax gate — BLOCKED (see CLAUDE.md)
 ├── preprocessing.py                  streams ARCHS4 H5 from S3 → TPM → log1p → parquet batches
 ├── merge.py                          merges preprocessing batches → one expression.parquet
 ├── slim_performer_model.py           SLiMPerformer linear-attention layer (imports numerator_and_denominator)
 ├── numerator_and_denominator.py      feature-map math for SLiMPerformer (do not delete — imported)
 │
 ├── evaluate_osdr.py                  zero-shot OSDR eval on a list of checkpoints
+├── analyze_moe_headroom.py           training-free MoE analysis: oracle/grid/uniform vs. best single expert on OSDR
 ├── check_alignment.py                diagnostic for train/eval alignment bugs (see CLAUDE.md)
+├── check_moe_gene_counts.py          diagnostic for the 3 5k experts' gene-vocab mismatch
 ├── prep_osdr_from_kmeng.py           one-shot: converts kmeng's preprocessed OSDR CSV → canonical parquet
 ├── fetch_reference_data.py           one-shot: populates data/ensembl and data/gencode reference files
 │
 ├── scripts/                          Savio batch jobs (run from repo root: `sbatch scripts/...`)
 │   ├── savio_preprocess.sh           job array, 3 variants, writes parquets to scratch
 │   ├── savio_train_experiments.sh    job array, trains all 3 variants on savio2_1080ti
+│   ├── savio_train_moe.sh            BLOCKED — needs the gene-alignment patch before it can run
+│   ├── savio_analyze_moe_headroom.sh training-free MoE headroom analysis on OSDR (savio2 CPU, 4h)
 │   └── savio_evaluate_osdr.sh        evaluates all 3 checkpoints on OSDR
 │
 ├── configs/
@@ -77,6 +82,14 @@ Two paths: Savio (production) and local (diagnostics).
    sbatch scripts/savio_evaluate_osdr.sh
    ```
    Writes `results/osdr_eval/osdr_eval_results.{csv,json}` and logs to W&B.
+
+5. **MoE headroom (training-free) on OSDR** — does combining the 3 experts help?
+   ```bash
+   sbatch scripts/savio_analyze_moe_headroom.sh
+   ```
+   Runs the 3 frozen experts on OSDR in a shared common gene space (intersection of expert gene sets), then reports per-expert / uniform-1/3 / grid-best (3-simplex search) / oracle (per-sample best expert) Pearson, plus a high-variance-genes-only cut. Writes `results/moe_headroom_5k/{predictions.npz,report.json}`. The `oracle - best_single` gap is the empirical headroom for any future learned gate.
+
+6. **(BLOCKED) MoE gate training** — `scripts/savio_train_moe.sh` exists but currently fails: the 3 expert checkpoints have different gene counts and column orders (see CLAUDE.md "MoE PoC Status"). Needs a canonical-↔-native alignment patch in `train_moe.py:load_expert` before it will run.
 
 ### Local diagnostic (current step per CLAUDE.md)
 

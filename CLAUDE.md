@@ -156,3 +156,65 @@ sbatch --dependency=afterok:<preprocess_jobid> scripts/savio_train_human_20k.sh
 `train_single.py` has `human_20k` in `VARIANT_CONFIGS`: `train_subset=16000`, `val_subset=3200`, balanced_sampling off.
 
 **Success criterion:** OSDR per-sample Pearson > `baseline_gene_mean_pearson` (~0.85). Walt's 20K model hits 0.892 at random_15pct — that's the target. If `human_20k` also stays at ~0.68, the issue is architectural (e.g., 2 layers insufficient, mask ratio 0.15 wrong for 14k-token sequence, LR schedule) not data scale.
+
+## MoE Proof-of-Concept (frozen 5k experts + gate)
+
+Compute-constrained pivot: `human_20k_v2` would need ~80h to finish on Savio (already at ~50h ETA when paused), so we run the MoE comparison now using the 3 existing 5k checkpoints as **frozen experts** and train only a small per-sample softmax gate. Per-epoch cost is dominated by 3× expert forward passes; gate has ~3.8M params and trains fast.
+
+Files:
+- `train_moe.py` — single-GPU script. Loads 3 expert checkpoints in `eval()` mode with `requires_grad=False`, preloads the 3 5k parquets into memory (~700 MiB), concatenates → 12k train / 2.4k val. Mask ratio 0.15 (matches expert training). Logs per-variant val loss and average gate weights per epoch.
+- `scripts/savio_train_moe.sh` — sbatch wrapper, 1× 1080 Ti, 48h walltime.
+
+Gating architecture: `Linear(G=14818, 256) → GELU → Dropout(0.1) → Linear(256, 3) → softmax`. Per-sample (not per-gene) routing. Mask token `-10` replaced with 0 before the linear projection so it doesn't pollute the sample representation.
+
+Run:
+```bash
+sbatch scripts/savio_train_moe.sh
+```
+
+Output: `checkpoints/moe_5k_v1/best_gate.pt` (gate state dict + arch + expert paths), `loss_history.csv`, `run_metadata.json`. Expert checkpoints are referenced by path — `best_gate.pt` does NOT bundle expert weights.
+
+**Success criterion:** MoE val loss lower than the best-single-expert baseline. The 5k OSDR ranking (mouse 0.781 > mixed 0.758 > human 0.687) is the reference for a follow-up OSDR eval — to make that comparison, write a small wrapper around the gate + experts that exposes the same forward signature `evaluate_osdr.py` expects, then point `--checkpoints` at it. Not yet wired up.
+
+**Caveats:**
+- Gate is trained at mask_ratio=0.15. Generalization to 0.50 / block masking on OSDR is not guaranteed.
+- All three experts share the same (failing) gene-mean-collapse regime per `check_alignment.py`. MoE cannot create signal that none of the experts have — it can only reweight existing signal. A positive result means routing helps; a null result is consistent with "specialization signal is too weak at 5k scale" and motivates retraining experts under v2 architecture before re-running MoE.
+
+## MoE PoC Status (2026-05-01) — `train_moe.py` blocked, pivoting to training-free headroom analysis
+
+First Savio run of `train_moe.py` (job 33939250) failed in <30s at `load_state_dict`. Diagnostic via `check_moe_gene_counts.py` (committed) showed **the 3 expert checkpoints have different gene counts AND different parquet column orders**:
+
+| variant   | gene_embedding | parquet cols | overlap with others |
+|-----------|----------------|--------------|---------------------|
+| human_5k  | 14818          | 14818        | column order diverges from mouse at idx 67 |
+| mouse_5k  | 14562          | 14562        | — |
+| mixed_5k  | 14522          | 14522        | — |
+
+Per-variant preprocessing must be applying its own gene filter, so `gene_embedding[i]` means a different gene in each expert. The PoC's "shared gene space" assumption is broken. The saved expert configs don't carry `num_genes`, which is why `train_moe.py:118-129`'s safety check silently fell through (fixed-up `load_expert` should read `sd["gene_embedding.weight"].shape[0]` directly — same trick `evaluate_osdr.load_checkpoint` already uses).
+
+**Three options considered:**
+1. Train-time alignment in `train_moe.py` — ~150 LOC of canonical-↔-native indexing per expert, plus zero-fill at non-intersection native positions (out-of-distribution input). ~12-18h to results, bounded by experts already in gene-mean-collapse.
+2. Re-preprocess to a shared vocab and retrain experts — cleanest, doesn't fit a 24h presentation deadline.
+3. **Training-free MoE headroom analysis on OSDR (chosen).** Don't train a gate. Run the 3 frozen experts on OSDR in a shared common gene space (intersection of expert gene sets, ordered by canonical position), then compute per-expert / uniform / grid-best / oracle Pearson. The gap between **oracle (per-sample best expert)** and **best single expert** is empirical evidence that there is per-sample specialization a learned gate could recover. ~6h on Savio CPU.
+
+`train_moe.py` is left in place but is **blocked** — needs the alignment patch (option 1) before it can run. Don't rerun `scripts/savio_train_moe.sh` without that fix.
+
+### Headroom analysis (current path)
+
+Files (committed):
+- `check_moe_gene_counts.py` — diagnostic that surfaced the mismatch.
+- `analyze_moe_headroom.py` — two-phase script (cache predictions, then analyze).
+- `scripts/savio_analyze_moe_headroom.sh` — sbatch wrapper, savio2 CPU partition (SLiMPerformer OOMs on 1080Ti at 14k genes per `savio_evaluate_osdr.sh`), 4h walltime.
+
+Run:
+```bash
+sbatch scripts/savio_analyze_moe_headroom.sh
+```
+
+Outputs: `results/moe_headroom_5k/predictions.npz` (per-expert per-sample predictions in common space) and `results/moe_headroom_5k/report.json` (summary metrics, including a top-10 grid-search table). The grid-search uses the same OSDR samples for fitting and reporting, so it's an upper bound on fixed-weight ensembling — fine for a PoC, would need a 50/50 split for a paper.
+
+**Decision rule for whether to do option 1 next:**
+- `oracle - best_single ≳ +0.02` → measurable per-sample specialization, train the gate.
+- `oracle - best_single ≈ 0` → no headroom even with cheating; don't bother training a gate. Pivot to retraining experts (option 2) under v2 architecture with a shared canonical vocab.
+
+Also reports a "high-variance subset" table (top 1000 common genes by per-OSDR variance). The absolute-Pearson framing is dominated by gene-mean signal (baseline ~0.85 vs. experts ~0.68-0.78), so the high-variance cut is the cleaner story for slides — restricts to genes where the experts get to actually differentiate from baseline.
