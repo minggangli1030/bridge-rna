@@ -218,3 +218,48 @@ Outputs: `results/moe_headroom_5k/predictions.npz` (per-expert per-sample predic
 - `oracle - best_single ≈ 0` → no headroom even with cheating; don't bother training a gate. Pivot to retraining experts (option 2) under v2 architecture with a shared canonical vocab.
 
 Also reports a "high-variance subset" table (top 1000 common genes by per-OSDR variance). The absolute-Pearson framing is dominated by gene-mean signal (baseline ~0.85 vs. experts ~0.68-0.78), so the high-variance cut is the cleaner story for slides — restricts to genes where the experts get to actually differentiate from baseline.
+
+## Headroom Result on OSDR-only (2026-05-01) — single-species set is degenerate
+
+First headroom run (job 33962526, 1855 OSDR mouse samples, all-common-genes mask 15%):
+
+|  condition                          | per-sample Pearson |
+|-------------------------------------|--------------------|
+| human_5k                            | 0.6820 |
+| mouse_5k                            | 0.7822  ← best single |
+| mixed_5k                            | 0.7583 |
+| uniform_1/3                         | 0.7686 |
+| grid_best (h=0.05, m=0.75, x=0.20)  | 0.7850 |
+| oracle (per-sample)                 | 0.7833 |
+| baseline_gene_mean                  | 0.8428 |
+
+**Gaps:** oracle − best_single = **+0.0011**, grid − best = +0.0029, uniform − best = −0.0135.
+
+Per the decision rule, +0.0011 is firmly in the "don't bother" regime. **But** OSDR is ~all mouse, so every sample wants the same expert — oracle ≈ best_single is structurally forced by the eval set, not by the experts. The number doesn't tell us whether the experts specialize. (The high-var subset block also crashed; bug fixed in `analyze_moe_headroom.py:323` to skip blocks where every per-sample Pearson is NaN.)
+
+A separate observation worth noting for slides: **uniform 1/3 ensemble loses to mouse_5k alone by −0.0135**. Naive averaging is *worse* than picking the best single expert. The grid-best weights are 5/75/20 — basically "use mouse, ignore the others" — which gives a near-best single result for free.
+
+## Headroom on a mixed mouse+human eval (in progress)
+
+To force routing variance, mix OSDR mouse samples with TCGA human samples and rerun. TCGA TPM matrix (`tcga_tpm_unstranded_matrix.parquet`, 3481 samples × 15165 HGNC symbols, already TPM-normalized) is a strict subset of `protein_coding_ortholog_genes.txt` (15165 of 15734) — no symbol-mismatch issues, just `log1p` + reindex with fill_value=0.
+
+Files (committed):
+- `prep_tcga.py` — load raw TCGA TPM → log1p → reindex to canonical → write `data/tcga/tcga_expression.parquet`. Run locally; the parquet is gitignored so rsync separately to Savio.
+- `build_mixed_eval.py` — sample N from each species, concat with a `species` column, write `data/eval_mixed/mixed_<N>_<N>_seed<S>.parquet`.
+- `analyze_moe_headroom.py` — patched to flow `species` through cache + add a per-species breakdown table to `report.json`.
+- `scripts/savio_analyze_moe_headroom_mixed.sh` — sbatch wrapper. Runs `build_mixed_eval` + `analyze_moe_headroom`. **8h walltime.** N_EACH and SEED overridable via env.
+- `scripts/run_mixed_eval_on_savio.sh` — one-shot runner: pulls, checks prereqs (prints scp command if TCGA missing), submits sbatch.
+
+Run on Savio:
+```bash
+cd /global/scratch/users/minggangli/bridge-rna
+bash scripts/run_mixed_eval_on_savio.sh
+```
+
+Walltime estimate: ~2h15m for N_EACH=500 (linear scaling from prior 1855-sample run = 4h06m).
+
+**The decision the mixed eval is supposed to inform:**
+- `oracle − best_single ≥ +0.02` on TCGA-only sub-table → human_5k expert genuinely specializes on human samples → routing has signal → train the gate after all.
+- `oracle − best_single ≈ 0` on both sub-tables → experts are uniformly weak, gene-mean-collapse is the ceiling → pivot to **option 2: retrain experts under v2 architecture with a shared canonical vocab** before any MoE work.
+
+Caveat: TCGA is tumor expression, training was healthy ARCHS4 — absolute Pearsons on TCGA may be lower than on OSDR mouse. The *gap* (oracle − best_single) is what's interpretable, not the absolute number.

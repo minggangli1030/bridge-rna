@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=32G
-#SBATCH --time=04:00:00
+#SBATCH --time=08:00:00
 #SBATCH --output=/global/scratch/users/minggangli/bridge-rna/logs/moe-headroom-mixed-%j.out
 #SBATCH --error=/global/scratch/users/minggangli/bridge-rna/logs/moe-headroom-mixed-%j.err
 #SBATCH --mail-type=END,FAIL
