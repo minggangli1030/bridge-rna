@@ -147,6 +147,12 @@ def cache_predictions(args, cache_path: Path):
     N = x_osdr.shape[0]
     print(f"[setup] OSDR samples: {N}, canonical-aligned shape: {x_osdr.shape}", flush=True)
 
+    species = (osdr_df["species"].astype(str).values
+               if "species" in osdr_df.columns else None)
+    if species is not None:
+        from collections import Counter
+        print(f"[setup] species: {dict(Counter(species))}", flush=True)
+
     if args.device == "auto":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     else:
@@ -216,8 +222,7 @@ def cache_predictions(args, cache_path: Path):
             torch.cuda.empty_cache()
 
     print(f"\n[save] {cache_path}", flush=True)
-    np.savez_compressed(
-        cache_path,
+    save_kwargs = dict(
         common_genes=np.array(common_genes, dtype=object),
         common_in_canonical=common_in_canonical,
         mask_idx_common=mask_idx_common,
@@ -228,6 +233,9 @@ def cache_predictions(args, cache_path: Path):
         mask_ratio=np.float32(args.mask_ratio),
         seed=np.int64(args.seed),
     )
+    if species is not None:
+        save_kwargs["species"] = np.array(species, dtype=object)
+    np.savez_compressed(cache_path, **save_kwargs)
     sz_mb = cache_path.stat().st_size / (1024 ** 2)
     print(f"[save] done ({sz_mb:.1f} MiB)", flush=True)
 
@@ -315,8 +323,12 @@ def analyze(args, cache_path: Path, out_dir: Path):
     pred_h = z["pred_human"]; pred_m = z["pred_mouse"]; pred_x = z["pred_mixed"]
     mask_ratio = float(z["mask_ratio"])
     seed = int(z["seed"])
+    species = z["species"] if "species" in z.files else None
     N, G_common = gt.shape
     print(f"[load] N={N}  G_common={G_common}  mask_ratio={mask_ratio}  seed={seed}", flush=True)
+    if species is not None:
+        from collections import Counter
+        print(f"[load] species: {dict(Counter(species))}", flush=True)
 
     preds_arr = np.stack([pred_h, pred_m, pred_x], axis=0)  # (3, N, G_common)
 
@@ -331,17 +343,30 @@ def analyze(args, cache_path: Path, out_dir: Path):
             rows.append(_summarize(name, r))
         per_expert_r = np.stack(per_expert_r, axis=0)  # (3, N)
 
+        n_valid_singles = max(row["n_valid"] for row in rows)
+        if n_valid_singles == 0:
+            n_kept = sum(len(m) for m in mask) if isinstance(mask, list) else int((mask >= 0).sum())
+            print(f"  [skip] no sample has a valid per-sample Pearson "
+                  f"(retained mask positions across all samples = {n_kept}). "
+                  f"Block produced nothing comparable; emitting empty rows.")
+            return rows, []
+
         # uniform
         r_uni = per_sample_pearson((pred_h + pred_m + pred_x) / 3.0, gt, mask)
         rows.append(_summarize("uniform_1/3", r_uni))
 
         # grid-best
         best_w, best_score, top10 = grid_search_weights(preds_arr, gt, mask)
-        wh, wm, wx = best_w
-        grid_pred = wh * pred_h + wm * pred_m + wx * pred_x
-        r_grid = per_sample_pearson(grid_pred, gt, mask)
-        rows.append({**_summarize(f"grid_best (h={wh:.2f},m={wm:.2f},x={wx:.2f})", r_grid),
-                     "weights": [wh, wm, wx]})
+        if best_w is None:
+            rows.append({"name": "grid_best (no valid score)", "mean": float("nan"),
+                         "median": float("nan"), "std": float("nan"), "n_valid": 0,
+                         "weights": None})
+        else:
+            wh, wm, wx = best_w
+            grid_pred = wh * pred_h + wm * pred_m + wx * pred_x
+            r_grid = per_sample_pearson(grid_pred, gt, mask)
+            rows.append({**_summarize(f"grid_best (h={wh:.2f},m={wm:.2f},x={wx:.2f})", r_grid),
+                         "weights": [wh, wm, wx]})
 
         # oracle (per-sample best expert)
         r_oracle = oracle_per_sample(per_expert_r)
@@ -381,6 +406,57 @@ def analyze(args, cache_path: Path, out_dir: Path):
         mask_topvar,
     )
 
+    # per-species breakdown (only meaningful when the eval set has >1 species).
+    # The MoE headroom test needs samples that prefer different experts; with a
+    # single-species set, oracle ≈ best_single by construction.
+    species_breakdown = None
+    if species is not None and len(set(species)) > 1:
+        print("\n--- By species (mask {:.0%}) ---".format(mask_ratio))
+        # recompute per-expert per-sample r once on the all-common mask
+        per_expert_r = np.stack([
+            per_sample_pearson(p, gt, mask_idx)
+            for p in (pred_h, pred_m, pred_x)
+        ], axis=0)  # (3, N)
+        r_oracle = oracle_per_sample(per_expert_r)
+        r_uni = per_sample_pearson((pred_h + pred_m + pred_x) / 3.0, gt, mask_idx)
+
+        species_breakdown = {}
+        header = (f"  {'species':<8} {'N':>5}  "
+                  + "  ".join(f"{n:>9}" for n in EXPERT_NAMES)
+                  + f"  {'uniform':>9}  {'oracle':>9}  best→")
+        print(header)
+        for sp in sorted(set(species)):
+            mask = species == sp
+            nsp = int(mask.sum())
+            per_expert_means = [float(np.nanmean(per_expert_r[i, mask])) for i in range(3)]
+            uni_mean = float(np.nanmean(r_uni[mask]))
+            ora_mean = float(np.nanmean(r_oracle[mask]))
+            best_idx = int(np.argmax(per_expert_means))
+            best_name = EXPERT_NAMES[best_idx]
+            print(f"  {sp:<8} {nsp:>5}  "
+                  + "  ".join(f"{v:>+9.4f}" for v in per_expert_means)
+                  + f"  {uni_mean:>+9.4f}  {ora_mean:>+9.4f}  {best_name}")
+            species_breakdown[sp] = {
+                "n": nsp,
+                "per_expert_mean": dict(zip(EXPERT_NAMES, per_expert_means)),
+                "uniform_mean": uni_mean,
+                "oracle_mean": ora_mean,
+                "best_single": best_name,
+                "gap_oracle_minus_best": ora_mean - max(per_expert_means),
+            }
+        # global oracle (per-sample best across the FULL mixed set), for reference
+        r_oracle_all = float(np.nanmean(r_oracle))
+        r_best_all = max(float(np.nanmean(per_expert_r[i])) for i in range(3))
+        print(f"\n  global oracle (mixed)    = {r_oracle_all:+.4f}")
+        print(f"  global best-single       = {r_best_all:+.4f}")
+        print(f"  gap (oracle - best_single) = {r_oracle_all - r_best_all:+.4f}   "
+              f"← MoE headroom on MIXED eval")
+        species_breakdown["__global__"] = {
+            "oracle_mean": r_oracle_all,
+            "best_single_mean": r_best_all,
+            "gap_oracle_minus_best": r_oracle_all - r_best_all,
+        }
+
     report = {
         "n_samples": N,
         "n_common_genes": G_common,
@@ -390,6 +466,7 @@ def analyze(args, cache_path: Path, out_dir: Path):
         "high_variance": {"topk": topk, "rows": rows_hv},
         "grid_top10_all_common": top10_all,
         "grid_top10_high_variance": top10_hv,
+        "by_species": species_breakdown,
     }
     out_path = out_dir / "report.json"
     with open(out_path, "w") as f:
