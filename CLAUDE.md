@@ -263,3 +263,54 @@ Walltime estimate: ~2h15m for N_EACH=500 (linear scaling from prior 1855-sample 
 - `oracle − best_single ≈ 0` on both sub-tables → experts are uniformly weak, gene-mean-collapse is the ceiling → pivot to **option 2: retrain experts under v2 architecture with a shared canonical vocab** before any MoE work.
 
 Caveat: TCGA is tumor expression, training was healthy ARCHS4 — absolute Pearsons on TCGA may be lower than on OSDR mouse. The *gap* (oracle − best_single) is what's interpretable, not the absolute number.
+
+## Mixed-Eval Result (2026-05-02) — pivot to option 2
+
+Job 33977614 (N_EACH=500, OSDR mouse + TCGA human) finished. Per-species headroom gaps:
+
+| sub-table | best single | oracle | gap |
+|-----------|-------------|--------|-----|
+| human (N=500) | human_5k 0.7989 | 0.7992 | **+0.0003** |
+| mouse (N=500) | mouse_5k 0.7822 | 0.7835 | **+0.0014** |
+| global        | 0.7715        | 0.7914 | +0.0199 |
+
+The global gap is the species-ID artifact (oracle picks "human_5k for humans, mouse_5k for mice" — that's a 2-line `if species == human` rule, not learnable specialization). Per-species gaps are both ≈ 0 → no headroom even with cheating → **don't train a gate**.
+
+Per the decision rule, pivot to **option 2: retrain experts with a shared canonical vocab under v2 architecture** before any further MoE work.
+
+## Option 2 — Shared-Vocab v2 Retrain (in progress)
+
+**Root cause of the broken MoE PoC:** `preprocessing.py` ran a per-variant all-zero gene filter (line ~947, was: `g not in all_zero and g in valid_len_genes`). Different sample subsets → different all-zero sets → different vocabs (14818 / 14562 / 14522). `gene_embedding[i]` meant a different gene in each expert.
+
+**Fix:** added `--canonical-genes-file` to `preprocessing.py`. When provided, the vocab is read verbatim from the file (intersected with `valid_len_genes` for safety), and the data-dependent zero-filter is skipped. All variants pass the same file → identical column order.
+
+The shared canonical list lives at `data/ensembl/canonical_genes_shared.txt` (15581 genes), produced by `compute_shared_canonical.py`:
+```
+vocab = protein_coding_ortholog_genes ∩ human_exon_lengths ∩ mouse_exon_lengths(via mouse→human map)
+```
+Data-independent. Commit it once; rsync to Savio.
+
+**v2 architecture** (same as `human_20k_v2`): `num_layers=4`, `mask_ratio=0.30`, `weight_decay=0.01`. Targets the gene-mean-collapse failure mode.
+
+**New variants in `train_single.py:VARIANT_CONFIGS`:** `human_5k_v2`, `mouse_5k_v2`, `mixed_5k_v2` (parquets at `data/archs4/{variant}_merged/`).
+
+### Run on Savio
+
+```bash
+cd /global/scratch/users/minggangli/bridge-rna
+
+# 0. One-time: rsync the shared vocab from local
+#    rsync data/ensembl/canonical_genes_shared.txt savio:.../data/ensembl/
+
+# 1. Preprocess all 3 variants with the shared vocab (job array, ~2-4h each)
+sbatch scripts/savio_preprocess_5k_v2.sh
+
+# 2. Train all 3 variants (job array, 4× 1080 Ti, ~6-12h each)
+sbatch --dependency=afterok:<preprocess_jobid> scripts/savio_train_5k_v2.sh
+
+# 3. Evaluate on OSDR (point evaluate_osdr.py at the new checkpoints)
+```
+
+**Decision points after training:**
+- All three v2 variants still below gene_mean baseline (~0.85) on OSDR → arch is the bottleneck even at v2; consider hidden_dim bump, mask_ratio sweep, or LR schedule changes before scaling data.
+- At least one v2 variant clears the gene_mean baseline → real signal. Then check if `mouse_5k_v2 > mixed_5k_v2 > human_5k_v2` ranking holds on mouse OSDR (sanity check from 5k v1 results). If yes, rerun the headroom analysis on the v2 checkpoints — the shared vocab makes the gate trainable, and clearing baseline means specialization signal is no longer noise.

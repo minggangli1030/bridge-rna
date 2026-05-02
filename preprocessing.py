@@ -186,6 +186,10 @@ class PreprocessingConfig:
     exon_lengths_human: str = "data/gencode/gencode_v49_gene_exon_lengths.csv"
     exon_lengths_mouse: str = "data/gencode/gencode_v49_mouse_gene_exon_lengths.csv"
     output_dir: str = "data/archs4/train_orthologs"
+    # If set, use this file as the canonical gene list verbatim (intersected
+    # with valid_len_genes for safety) and skip the variant-specific all-zero
+    # filter. Required for cross-variant column alignment (MoE / ensemble).
+    canonical_genes_file: Optional[str] = None
 
     # --- Reproducibility ---
     seed: int = 42
@@ -913,29 +917,6 @@ class RNADatasetBuilder:
 
         # --- Remove zero-expression genes from actual data ---
         if cfg.gene_set == "shared_orthologs":
-            print(f"\nFinding zero-expression genes (scanning batch files)...")
-            for species in species_list:
-                # Accumulate per-gene sums across all batches for this species
-                gene_sum = None
-                for bp in species_batch_paths[species]:
-                    batch_df = pd.read_parquet(bp)
-                    # Sample-major format [samples, genes]: sum per gene is axis=0.
-                    batch_sum = batch_df.sum(axis=0).reindex(all_ortho, fill_value=0)
-                    if gene_sum is None:
-                        gene_sum = batch_sum
-                    else:
-                        gene_sum = gene_sum.add(batch_sum, fill_value=0)
-                    del batch_df
-                    gc.collect()
-                if gene_sum is not None:
-                    zero = set(gene_sum.index[gene_sum == 0])
-                    self.zero_genes[species] = zero
-                    print(f"  {species}: {len(zero):,} genes with zero expression")
-
-            all_zero = set()
-            for zg in self.zero_genes.values():
-                all_zero |= zg
-            # Require exon lengths in both species for final TPM normalization.
             human_len_genes = set(self.loader.exon_lengths_human.index)
             mouse_len_genes = set(
                 self.loader.exon_lengths_mouse.rename(index=self.registry.mouse_to_human)
@@ -944,11 +925,53 @@ class RNADatasetBuilder:
             )
             valid_len_genes = human_len_genes & mouse_len_genes
 
-            self.canonical_genes = [
-                g for g in all_ortho
-                if g not in all_zero and g in valid_len_genes
-            ]
-            print(f"  Removed {len(all_zero):,} genes → {len(self.canonical_genes):,} remaining")
+            if cfg.canonical_genes_file:
+                # Shared-vocab path: gene list is fixed up-front, identical across
+                # variants. No data-dependent zero-filter — that's the bug we're
+                # fixing.
+                with open(cfg.canonical_genes_file) as f:
+                    fixed = [line.strip() for line in f if line.strip()]
+                missing_lens = [g for g in fixed if g not in valid_len_genes]
+                if missing_lens:
+                    print(
+                        f"  WARNING: {len(missing_lens)} canonical genes lack exon "
+                        f"lengths in both species and will be dropped: "
+                        f"{missing_lens[:5]}{'...' if len(missing_lens) > 5 else ''}"
+                    )
+                self.canonical_genes = [g for g in fixed if g in valid_len_genes]
+                print(
+                    f"  Using fixed canonical list from {cfg.canonical_genes_file}: "
+                    f"{len(self.canonical_genes):,} genes"
+                )
+            else:
+                print(f"\nFinding zero-expression genes (scanning batch files)...")
+                for species in species_list:
+                    # Accumulate per-gene sums across all batches for this species
+                    gene_sum = None
+                    for bp in species_batch_paths[species]:
+                        batch_df = pd.read_parquet(bp)
+                        # Sample-major format [samples, genes]: sum per gene is axis=0.
+                        batch_sum = batch_df.sum(axis=0).reindex(all_ortho, fill_value=0)
+                        if gene_sum is None:
+                            gene_sum = batch_sum
+                        else:
+                            gene_sum = gene_sum.add(batch_sum, fill_value=0)
+                        del batch_df
+                        gc.collect()
+                    if gene_sum is not None:
+                        zero = set(gene_sum.index[gene_sum == 0])
+                        self.zero_genes[species] = zero
+                        print(f"  {species}: {len(zero):,} genes with zero expression")
+
+                all_zero = set()
+                for zg in self.zero_genes.values():
+                    all_zero |= zg
+
+                self.canonical_genes = [
+                    g for g in all_ortho
+                    if g not in all_zero and g in valid_len_genes
+                ]
+                print(f"  Removed {len(all_zero):,} genes → {len(self.canonical_genes):,} remaining")
         else:
             human_len_genes = set(self.loader.exon_lengths_human.index)
             mouse_len_genes = set(
@@ -1079,6 +1102,12 @@ if __name__ == "__main__":
     parser.add_argument("--max-samples", type=int, default=None,
                         help="Max samples per species (default: all). "
                              "Useful for quick test runs.")
+    parser.add_argument("--canonical-genes-file", default=None,
+                        help="Optional file with one gene symbol per line. If set, "
+                             "use this list as the canonical gene vocab verbatim "
+                             "(intersected with valid exon-length genes) and skip "
+                             "the variant-specific all-zero filter. Required for "
+                             "cross-variant column alignment (MoE / ensemble).")
     args = parser.parse_args()
 
     config = PreprocessingConfig(
@@ -1089,6 +1118,7 @@ if __name__ == "__main__":
         normalization=args.normalization,
         debug_tpm_denominator=args.debug_tpm_denominator,
         max_samples_per_species=args.max_samples,
+        canonical_genes_file=args.canonical_genes_file,
     )
 
     builder = RNADatasetBuilder(config=config)

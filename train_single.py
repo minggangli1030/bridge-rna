@@ -593,6 +593,45 @@ VARIANT_CONFIGS = {
 		"mask_ratio": 0.30,
 		"weight_decay": 0.01,
 	},
+	# Option-2 retrain: 5k variants under v2 architecture AND a shared canonical
+	# gene vocab (same column order across all three). The original 5k checkpoints
+	# had per-variant vocabs (14818 / 14562 / 14522), which broke the MoE PoC and
+	# made the headroom analysis structurally unable to show specialization. These
+	# variants regenerate the parquets with --canonical-genes-file and retrain
+	# from scratch under the v2 arch.
+	"human_5k_v2": {
+		"expression_parquet": "./data/archs4/human_5k_v2_merged/expression.parquet",
+		"samples_json": "./data/archs4/human_5k_v2/samples.json",
+		"checkpoint_dir": "./checkpoints/human_5k_v2",
+		"train_subset": 4000,
+		"val_subset": 800,
+		"balanced_sampling": False,
+		"num_layers": 4,
+		"mask_ratio": 0.30,
+		"weight_decay": 0.01,
+	},
+	"mouse_5k_v2": {
+		"expression_parquet": "./data/archs4/mouse_5k_v2_merged/expression.parquet",
+		"samples_json": "./data/archs4/mouse_5k_v2/samples.json",
+		"checkpoint_dir": "./checkpoints/mouse_5k_v2",
+		"train_subset": 4000,
+		"val_subset": 800,
+		"balanced_sampling": False,
+		"num_layers": 4,
+		"mask_ratio": 0.30,
+		"weight_decay": 0.01,
+	},
+	"mixed_5k_v2": {
+		"expression_parquet": "./data/archs4/mixed_5k_v2_merged/expression.parquet",
+		"samples_json": "./data/archs4/mixed_5k_v2/samples.json",
+		"checkpoint_dir": "./checkpoints/mixed_5k_v2",
+		"train_subset": 4000,
+		"val_subset": 800,
+		"balanced_sampling": True,
+		"num_layers": 4,
+		"mask_ratio": 0.30,
+		"weight_decay": 0.01,
+	},
 }
 
 
