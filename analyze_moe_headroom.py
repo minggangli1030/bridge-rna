@@ -5,8 +5,7 @@ Training-free MoE headroom analysis on OSDR.
 Loads the 3 frozen 5k experts (human, mouse, mixed), runs them on the OSDR
 parquet, and computes:
 
-    - Per-expert per-sample Pearson on masked positions (matches the
-      CLAUDE.md table — sanity check).
+    - Per-expert per-sample Pearson on masked positions for sanity checks.
     - Uniform 1/3 ensemble: does naive averaging help?
     - Grid-search optimal fixed weights on a 3-simplex (step 0.05).
     - Per-sample oracle: cheat by picking the best expert per sample.

@@ -1,9 +1,0 @@
-
-[DATA] Building sample indices...
-[DATA] Total samples available: 940,455
-       human: 510,709 samples
-       mouse: 429,746 samples
-       Balanced to 12,000 per species
-       Train: 20,000 samples
-       Val:   4,000 samples
-  + Index time: 9.6s

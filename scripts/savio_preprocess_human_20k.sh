@@ -13,7 +13,7 @@
 #SBATCH --mail-user=minggangli@berkeley.edu
 
 # A/B scale-up: preprocess 20k human ARCHS4 samples for direct comparison
-# against walt's ~20k-sample model. See CLAUDE.md for context.
+# against Walt's ~20k-sample model.
 
 set -eo pipefail
 mkdir -p /global/scratch/users/minggangli/bridge-rna/logs
